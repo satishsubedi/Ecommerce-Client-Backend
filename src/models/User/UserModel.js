@@ -4,3 +4,6 @@ import UserSchema from "./UserSchema.js";
 export const createNewUser = (userObj) => {
   return UserSchema(userObj).save();
 };
+export const updateUser = (filter, updateObj) => {
+  return UserSchema.findOneAndUpdate(filter, updateObj, { new: true });
+};

@@ -17,3 +17,7 @@ export const ADDRESS = Joi.object({
   country: Joi.string().required(),
 });
 export const ADDRESS_REQUIRED = ADDRESS.required();
+export const SESSION = Joi.string().min(10).max(30);
+export const SESSION_REQUIRED = SESSION.required();
+export const TOKEN = Joi.string().min(10);
+export const TOKEN_REQUIRED = TOKEN.required();

@@ -17,3 +17,21 @@ export const userActivationUrlEmailTemplate = ({ email, name, url }) => {
         <p>Regards</p>`, // HTML body
   };
 };
+export const userAccountActivatedNotificationTemplate = ({ email, name }) => {
+  return {
+    from: `"Ecommerce website" <${process.env.SMTP_EMAIL}>`, //Sender address
+    to: email, // List of recipients
+    subject: "Account activated", // Subject line
+    text: `Hello.. ${name},\n\n, Your account has been activated. You may go and Sign in now.\n\nThank you!`, // Plain text body
+    html: `<p>Hello ${name},</p>
+       
+        <br>
+        <br>
+        <p>Congratulations! Your account has been activated successfully.. You can login now.</p>
+        <br>
+        <br>
+       
+        <p>Thank you!</p>  
+        <p>Regards</p>`, // HTML body
+  };
+};

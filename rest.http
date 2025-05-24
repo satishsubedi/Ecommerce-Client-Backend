@@ -14,7 +14,7 @@ Content-Type: application/json
 {
     "fName" : "Rohith",
     "lName" : "Kumar",
-    "email" : "abc2@g.com",
+    "email" : "rohithcloudready2@gmail.com",
     "phone" : "9876543210",
     "address" : {
         "street": "PointCook",
@@ -24,4 +24,13 @@ Content-Type: application/json
         "country": "Australia"
     },
     "password" : "Roh@123"
+}
+
+### Post to activate user
+POST {{rootUrl}}/api/v1/auth/activate-user 
+Content-Type: application/json
+
+{
+    "sessionId": "6831b87761a75144bfd84cb3",
+    "t" : "83e5ad4f-ca2d-41e1-98ab-c4e4876770c4"
 }

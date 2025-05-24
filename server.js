@@ -4,6 +4,19 @@ import { dbConnect } from "./src/config/dbconfig.js";
 const app = express();
 const PORT = process.env.PORT || 8001;
 
+//Middlewares
+import cors from "cors";
+import morgan from "morgan";
+import { errorHandler } from "./src/middleware/errorHandler.js";
+app.use(cors()); // To enable CORS for all routes
+app.use(morgan("dev")); // To log HTTP requests in the console
+app.use(express.json()); // To parse incoming JSON requests and put the parsed data in req.body, so that we can access it in our route handlers
+app.use(errorHandler); // To handle errors globally in the application
+
+//API endpoints
+import authRoute from "./src/routes/authRoute.js";
+import { responseClient } from "./src/middleware/responseClient.js";
+app.use("/api/v1/auth", authRoute);
 //DB Connection and Server status
 dbConnect()
   .then(() => {
@@ -16,4 +29,8 @@ dbConnect()
     });
   })
   .catch((error) => console.log(error));
-app.get("/", (req, res) => res.send("<h2>Client Api is up</h2>")); // To define a route handler for GET requests to the root URL ("/").
+// To define a route handler for GET requests to the root URL ("/"):
+app.get("/", (req, res) => {
+  const message = " Welcome to the server, Its LIVE now";
+  responseClient({ req, res, message }); // To send a response to the client
+});

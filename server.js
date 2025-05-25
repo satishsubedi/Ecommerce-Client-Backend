@@ -2,7 +2,7 @@ import express from "express";
 import { dbConnect } from "./src/config/dbconfig.js";
 
 const app = express();
-const PORT = process.env.PORT || 8001;
+const PORT = process.env.PORT || 8000;
 
 //Middlewares
 import cors from "cors";
@@ -13,10 +13,16 @@ app.use(morgan("dev")); // To log HTTP requests in the console
 app.use(express.json()); // To parse incoming JSON requests and put the parsed data in req.body, so that we can access it in our route handlers
 app.use(errorHandler); // To handle errors globally in the application
 
-//API endpoints
 import authRoute from "./src/routes/authRoute.js";
+import imageRoutes from "./src/routes/imageRoute.js";
 import { responseClient } from "./src/middleware/responseClient.js";
+//API endpoints
+//Auth Routes
 app.use("/api/v1/auth", authRoute);
+
+//end poins for image
+app.use("/api/v1/all", imageRoutes);
+
 //DB Connection and Server status
 dbConnect()
   .then(() => {

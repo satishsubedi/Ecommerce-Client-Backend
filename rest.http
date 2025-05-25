@@ -1,0 +1,36 @@
+@rootUrl = http://localhost:8001
+
+#API list
+
+### Check server status
+Get {{rootUrl}}
+
+### Auth API
+
+### Post new user
+POST {{rootUrl}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+    "fName" : "Rohith",
+    "lName" : "Kumar",
+    "email" : "rohithcloudready2@gmail.com",
+    "phone" : "9876543210",
+    "address" : {
+        "street": "PointCook",
+        "city": "Melbourne",
+        "state": "Victoria",
+        "zipcode": "3030",
+        "country": "Australia"
+    },
+    "password" : "Roh@123"
+}
+
+### Post to activate user
+POST {{rootUrl}}/api/v1/auth/activate-user 
+Content-Type: application/json
+
+{
+    "sessionId": "6831b87761a75144bfd84cb3",
+    "t" : "83e5ad4f-ca2d-41e1-98ab-c4e4876770c4"
+}

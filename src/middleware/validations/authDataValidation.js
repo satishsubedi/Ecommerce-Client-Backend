@@ -29,3 +29,10 @@ export const userActivationDataValidation = (req, res, next) => {
   };
   validateData({ req, res, next, obj });
 };
+export const loginDataValidation = (req, res, next) => {
+  const obj = {
+    email: EMAIL_REQUIRED,
+    password: PASSWORD_REQUIRED,
+  };
+  validateData({ req, res, next, obj });
+};

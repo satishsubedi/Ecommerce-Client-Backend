@@ -1,5 +1,9 @@
-import { createNewUser, updateUser } from "../models/User/UserModel.js";
-import { hashpassword } from "../utils/bcrypt.js";
+import {
+  createNewUser,
+  getUserByEmail,
+  updateUser,
+} from "../models/User/UserModel.js";
+import { comparePassword, hashpassword } from "../utils/bcrypt.js";
 import { v4 as uuidv4 } from "uuid";
 import { responseClient } from "../middleware/responseClient.js";
 import {
@@ -9,15 +13,16 @@ import {
 import {
   userActivatedNotificationEmail,
   userActivationUrlEmail,
+  userResetPasswordEmail,
 } from "../services/email/emailService.js";
+import { getJwts } from "../utils/jwt.js";
 
+// Register(SignUp) of new user.
 export const insertNewUser = async (req, res, next) => {
   try {
-    // TODO SignUp process
-
     //Receive the user Data
     const { password } = req.body;
-    //Encrypt the password
+    //Encrypt the password using bcrypt, before inserting into the database
     req.body.password = hashpassword(password);
     //Create and send unique activation link to the user for email verification
 
@@ -30,6 +35,7 @@ export const insertNewUser = async (req, res, next) => {
         association: user.email,
       });
       if (session?._id) {
+        //Create url to send to client email for activation.
         const url = `${process.env.ROOT_URL}/activate-user?sessionId=/${session._id}&t=${session.token}`;
         // Send this url to their email
         const emailId = await userActivationUrlEmail({
@@ -82,5 +88,178 @@ export const activateUser = async (req, res, next) => {
     responseClient({ req, res, message, statusCode });
   } catch (error) {
     next(error);
+  }
+};
+
+// Login User
+export const loginUser = async (req, res, next) => {
+  try {
+    //Destructure email and password from req.body
+    const { email, password } = req.body;
+
+    //Get user by email
+    const user = await getUserByEmail(email);
+    if (user?._id) {
+      //Compare the password
+      const isPassMatch = comparePassword(password, user.password);
+      if (isPassMatch) {
+        console.log("User authenticated succesfully...!");
+
+        // Create JWTs, so that server can validate through these tokens, instead of asking for username and password
+        const jwts = await getJwts(email);
+        // Response jwts
+        return responseClient({
+          req,
+          res,
+          message: "Login successful...!",
+          payload: jwts,
+        });
+      }
+    }
+    const message = " Invalid Login details !!";
+    const statusCode = 401;
+    responseClient({ req, res, message, statusCode });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//Get the user info
+export const getUser = async (req, res) => {
+  try {
+    responseClient({
+      req,
+      res,
+      message: "User info fetched successfully",
+      payload: req.userInfo, // req.userInfo is set by userAuthMiddleware
+    });
+  } catch (error) {
+    responseClient({
+      req,
+      res,
+      message: error.message || "Unable to get user info",
+      statusCode: error.statusCode || 500,
+    });
+  }
+};
+
+//Forgot password
+export const forgotPassword = async (req, res) => {
+  try {
+    //Check if user exists
+    const user = await getUserByEmail(req.body.email);
+    // If user is not found
+    if (!user?._id) {
+      return responseClient({
+        req,
+        res,
+        message: "User not found",
+        statusCode: 404,
+      });
+    }
+    // If user exist
+    if (user?._id) {
+      // If user found, send  verification email
+      const secureId = uuidv4();
+
+      //Store this secureId in session storage for that user
+      const newUserSession = await createNewSession({
+        token: secureId,
+        association: user.email,
+        expiry: new Date(Date.now() + 3 * 60 * 60 * 1000), // Session expires in 3 hrs
+      });
+      if (newUserSession?._id) {
+        const resetPasswordUrl = `${process.env.ROOT_URL}/change-password?e=${user.email}&id=${secureId}`;
+
+        //Send mail to user
+        userResetPasswordEmail({
+          name: user.fName,
+          email: user.email,
+          resetPasswordUrl,
+        });
+      }
+      responseClient({
+        req,
+        res,
+        payload: {},
+        message: "Check your inbox/spam to reset your password",
+      });
+    }
+  } catch (error) {
+    console.log(error.message);
+    responseClient({ req, res, message: error.message, statusCode: 500 });
+  }
+};
+
+// Reset password
+export const resetPassword = async (req, res) => {
+  try {
+    const { formData, token, email } = req.body;
+    console.log("req.body : ", req.body);
+
+    const user = await getUserByEmail(email);
+
+    //Delete token from session table after password reset, for one time click.
+    const sessionToken = await deleteSession({ token, association: email });
+    console.log("session token : ", sessionToken);
+    if (user && sessionToken) {
+      const { password } = formData;
+      const encryptedPassword = hashpassword(password);
+      const updatedUser = await updateUser(
+        { email },
+        { password: encryptedPassword }
+      );
+      responseClient({
+        req,
+        res,
+        message: "Password reset successfully. You can login now.",
+        payload: updatedUser,
+      });
+    } else {
+      responseClient({
+        req,
+        res,
+        message: "Invalid request or token expired. Please try again.",
+        statusCode: 400,
+      });
+    }
+  } catch (error) {
+    responseClient({ req, res, message: error.message, statusCode: 500 });
+  }
+};
+
+// Logout user
+export const logoutUser = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const { authorization } = req.headers;
+
+    if (!authorization) {
+      return responseClient({
+        req,
+        res,
+        message: "Authorization token missing",
+        statusCode: 401,
+      });
+    }
+
+    const token = authorization.split(" ")[1];
+    //Remove session for the user
+    const result = await deleteSession({
+      token,
+      association: email,
+    });
+
+    //Use ternary operator to hanle succes or failure
+    result
+      ? responseClient({ req, res, message: "User logged out successfuly..!" })
+      : responseClient({
+          req,
+          res,
+          message: "Session not found or already deleted..",
+          statusCode: 500,
+        });
+  } catch (error) {
+    responseClient({ req, res, message: error.message, statusCode: 500 });
   }
 };

@@ -13,7 +13,7 @@ export const ADDRESS = Joi.object({
   street: Joi.string().required(),
   city: Joi.string().required(),
   state: Joi.string().required(),
-  zipcode: Joi.number().required(),
+
   country: Joi.string().required(),
 });
 export const ADDRESS_REQUIRED = ADDRESS.required();

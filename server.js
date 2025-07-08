@@ -11,17 +11,22 @@ import { errorHandler } from "./src/middleware/errorHandler.js";
 app.use(cors()); // To enable CORS for all routes
 app.use(morgan("dev")); // To log HTTP requests in the console
 app.use(express.json()); // To parse incoming JSON requests and put the parsed data in req.body, so that we can access it in our route handlers
-app.use(errorHandler); // To handle errors globally in the application
 
 import authRoute from "./src/routes/authRoute.js";
 import imageRoutes from "./src/routes/imageRoute.js";
 import { responseClient } from "./src/middleware/responseClient.js";
+import productRouter from "./src/routes/productRoutes.js";
+import categoryRouter from "./src/routes/categoryRoutes.js";
 //API endpoints
 //Auth Routes
 app.use("/api/v1/auth", authRoute);
+app.use("/api/v1/product", productRouter);
+app.use("/api/v1/category", categoryRouter);
 
 //end poins for image
 app.use("/api/v1/all", imageRoutes);
+
+app.use(errorHandler); // To handle errors globally in the application
 
 //DB Connection and Server status
 dbConnect()

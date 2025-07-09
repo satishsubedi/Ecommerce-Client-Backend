@@ -18,5 +18,6 @@ export const validateData = ({ req, res, next, obj }) => {
     });
   }
   // If there is no error, call the next middleware
+
   next();
 };

@@ -20,6 +20,7 @@ import { getJwts } from "../utils/jwt.js";
 // Register(SignUp) of new user.
 export const insertNewUser = async (req, res, next) => {
   try {
+    console.log(req.body, "aaa");
     //Receive the user Data
     const { password } = req.body;
     //Encrypt the password using bcrypt, before inserting into the database
@@ -28,6 +29,7 @@ export const insertNewUser = async (req, res, next) => {
 
     //Insert the user in the database
     const user = await createNewUser(req.body);
+
     // Create and send unique activation link to the user for email verification
     if (user?._id) {
       const session = await createNewSession({

@@ -17,7 +17,7 @@ export const newUserDataValidation = (req, res, next) => {
     email: EMAIL_REQUIRED,
     password: PASSWORD_REQUIRED,
     phone: PHONE_REQUIRED,
-    address: ADDRESS_REQUIRED,
+    // address: ADDRESS_REQUIRED,
   };
   validateData({ req, res, next, obj });
 };

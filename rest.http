@@ -12,17 +12,11 @@ POST {{rootUrl}}/api/v1/auth/register
 Content-Type: application/json
 
 {
-    "fName" : "Rohith",
+    "fName" : "Rohitha",
     "lName" : "Kumar",
-    "email" : "rohithcloudready2@gmail.com",
+    "email" : "rohithcloudready0@gmail.com",
     "phone" : "9876543210",
-    "address" : {
-        "street": "PointCook",
-        "city": "Melbourne",
-        "state": "Victoria",
-        "zipcode": "3030",
-        "country": "Australia"
-    },
+    
     "password" : "Roh@123"
 }
 

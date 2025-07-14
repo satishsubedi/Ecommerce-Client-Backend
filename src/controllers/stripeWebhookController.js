@@ -1,5 +1,6 @@
 import Order from "../models/Order/OrderSchema.js";
 import Product from "../models/Product/ProductSchema.js";
+import Stripe from "stripe";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const stripeWebhookHandler = async (req, res) => {

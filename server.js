@@ -8,7 +8,12 @@ const PORT = process.env.PORT || 8001;
 import cors from "cors";
 import morgan from "morgan";
 import { errorHandler } from "./src/middleware/errorHandler.js";
-app.use(cors()); // To enable CORS for all routes
+app.use(
+  cors({
+    origin: "http://localhost:5173", // frontend domain
+    credentials: true,
+  })
+); // To enable CORS for all routes
 app.use(morgan("dev")); // To log HTTP requests in the console
 app.use(express.json()); // To parse incoming JSON requests and put the parsed data in req.body, so that we can access it in our route handlers
 

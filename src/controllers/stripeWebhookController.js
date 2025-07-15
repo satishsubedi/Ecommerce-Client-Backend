@@ -4,7 +4,7 @@ import Stripe from "stripe";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const stripeWebhookHandler = async (req, res) => {
-  const sig = req.headers["stripe-signiture"];
+  const sig = req.headers["stripe-signature"];
   let event;
   try {
     event = stripe.webhooks.constructEvent(
@@ -39,7 +39,7 @@ export const stripeWebhookHandler = async (req, res) => {
         orderItems.push({
           product: product.id,
           quantity: item.quantity,
-          price: food.price,
+          price: product.price,
         });
       }
       await Order.create({
@@ -53,7 +53,7 @@ export const stripeWebhookHandler = async (req, res) => {
         buyer: userId || null,
         guestId: guestId || null,
         guestInfo: guestInfo || null,
-        status: "Order Placed",
+        orderStatus: "Order Placed",
       });
       console.log("Order created successfully ");
       return res.status(200).json({ received: true });

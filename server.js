@@ -8,7 +8,12 @@ const PORT = process.env.PORT || 8001;
 import cors from "cors";
 import morgan from "morgan";
 import { errorHandler } from "./src/middleware/errorHandler.js";
-app.use(cors()); // To enable CORS for all routes
+app.use(
+  cors({
+    origin: "http://localhost:5173", // frontend domain
+    credentials: true,
+  })
+); // To enable CORS for all routes
 app.use(morgan("dev")); // To log HTTP requests in the console
 app.use(express.json()); // To parse incoming JSON requests and put the parsed data in req.body, so that we can access it in our route handlers
 
@@ -17,11 +22,15 @@ import imageRoutes from "./src/routes/imageRoute.js";
 import { responseClient } from "./src/middleware/responseClient.js";
 import productRouter from "./src/routes/productRoutes.js";
 import categoryRouter from "./src/routes/categoryRoutes.js";
+import orderRouter from "./src/routes/orderRoutes.js";
+import webhookRoute from "./src/routes/webhookRoute.js";
 //API endpoints
 //Auth Routes
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/product", productRouter);
 app.use("/api/v1/category", categoryRouter);
+app.use("/api/v1/order", orderRouter);
+app.use("/api/v1/webhook", webhookRoute);
 
 //end poins for image
 app.use("/api/v1/all", imageRoutes);

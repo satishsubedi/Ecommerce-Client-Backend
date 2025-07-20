@@ -131,11 +131,11 @@ export const getAllFilterProductsController = async (req, res, next) => {
     }
 
     if (brand) {
-      filter.brand = brand;
+      filter.brand = brand.includes(",") ? { $in: brand.split(",") } : brand;
     }
-
+    console.log(filter);
     const products = await getAllProductsByPath(filter);
-    console.log(products);
+
     console.log(products.length);
     products?.length > 0 && Array.isArray(products)
       ? responseClient({

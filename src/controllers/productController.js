@@ -96,7 +96,15 @@ export const getAllProductsController = async (req, res, next) => {
 };
 export const getAllFilterProductsController = async (req, res, next) => {
   try {
-    const { mainCategory, maxPrice, minPrice, colors, sale, brand } = req.query;
+    const {
+      mainCategory,
+      maxPrice,
+      minPrice,
+      colors,
+      sale,
+      brand,
+      productPath,
+    } = req.query;
     console.log(req.query, "query");
     const filter = {};
 
@@ -115,25 +123,28 @@ export const getAllFilterProductsController = async (req, res, next) => {
     if (sale === "true") {
       filter.sale = true;
     }
-
     if (brand) {
-      filter.brand = brand;
+      filter.brand = brand.includes(",") ? { $in: brand.split(",") } : brand;
     }
-
+    if (productPath) {
+      filter.productPath = {
+        $regex: new RegExp(`^${productPath}`),
+        $options: "i",
+      };
+    }
     const products = await getAllProductsByPath(filter);
-    console.log(products.length);
     products?.length > 0 && Array.isArray(products)
       ? responseClient({
           payload: products,
-          message: products.length ? "Filtered products" : "No products found",
+          message: "Filtered products",
           req,
           res,
         })
       : responseClient({
-          message: "Sry something went wrong",
+          message: "No product Found",
           req,
           res,
-          statusCode: 401,
+          payload: [],
         });
   } catch (error) {
     next(error);

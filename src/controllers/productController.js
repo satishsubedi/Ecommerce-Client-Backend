@@ -107,6 +107,12 @@ export const getAllFilterProductsController = async (req, res, next) => {
     } = req.query;
     console.log(req.query, "query");
     const filter = {};
+    if (productPath) {
+      filter.productPath = {
+        $regex: new RegExp(`^${productPath}`),
+        $options: "i", // optional: case-insensitive
+      };
+    }
 
     if (mainCategory) {
       filter.mainCategory = mainCategory.includes(",")
@@ -133,6 +139,7 @@ export const getAllFilterProductsController = async (req, res, next) => {
       };
     }
     const products = await getAllProductsByPath(filter);
+
     products?.length > 0 && Array.isArray(products)
       ? responseClient({
           payload: products,
@@ -141,9 +148,11 @@ export const getAllFilterProductsController = async (req, res, next) => {
           res,
         })
       : responseClient({
+
           message: "No product Found",
           req,
           res,
+
           payload: [],
         });
   } catch (error) {

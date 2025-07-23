@@ -1,13 +1,33 @@
 import express from "express";
-import { dbConnect } from "./src/config/dbconfig.js";
+import cors from "cors";
+import morgan from "morgan";
+import "dotenv/config";
+import dbConnect from "./src/config/dbconfig.js";
+import { responseClient } from "./src/middleware/responseClient.js";
+import { errorHandler } from "./src/middleware/errorHandler.js";
+import authRoute from "./src/routes/authRoute.js";
+import imageRoutes from "./src/routes/imageRoute.js";
+import productRouter from "./src/routes/productRoutes.js";
+import categoryRouter from "./src/routes/categoryRoutes.js";
+import webhookRouter from "./src/routes/stripeWebhook.js";
+import stripeRouter from "./src/routes/stripe.js";
 
 const app = express();
 const PORT = process.env.PORT || 8001;
 
+// 1. Register webhook route FIRST
+app.use("/api/v1/webhook", webhookRouter);
+
+// 2. Now add your other middleware
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith("/api/v1/webhook")) {
+    next(); // skip express.json() for webhook
+  } else {
+    express.json()(req, res, next);
+  }
+});
+
 //Middlewares
-import cors from "cors";
-import morgan from "morgan";
-import { errorHandler } from "./src/middleware/errorHandler.js";
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -16,32 +36,13 @@ app.use(
 );
 
 app.use(morgan("dev"));
-
-import authRoute from "./src/routes/authRoute.js";
-import imageRoutes from "./src/routes/imageRoute.js";
-import { responseClient } from "./src/middleware/responseClient.js";
-import productRouter from "./src/routes/productRoutes.js";
-import categoryRouter from "./src/routes/categoryRoutes.js";
-import orderRouter from "./src/routes/orderRoutes.js";
-import webhookRoute from "./src/routes/webhookRoute.js";
+// app.use(express.json());
 
 //API endpoints
-
-//for webhook
-app.use((req, res, next) => {
-  if (req.originalUrl === "/api/v1/webhook") {
-    next(); // skip express.json() for webhook
-  } else {
-    express.json()(req, res, next);
-  }
-});
-//Auth Routes
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/product", productRouter);
 app.use("/api/v1/category", categoryRouter);
-app.use("/api/v1/order", orderRouter);
-app.use("/api/v1/webhook", webhookRoute);
-app.use(express.json());
+app.use("/api/v1/payment", stripeRouter);
 
 //end poins for image
 app.use("/api/v1/all", imageRoutes);
@@ -60,6 +61,7 @@ dbConnect()
     });
   })
   .catch((error) => console.log(error));
+
 // To define a route handler for GET requests to the root URL ("/"):
 app.get("/", (req, res) => {
   const message = " Welcome to the server, Its LIVE now";

@@ -113,7 +113,7 @@ export const loginUser = async (req, res, next) => {
     const { email, password } = req.body;
 
     //check if user exists
-    const user = await findUserByEmail(email);
+    const user = await getUserByEmail(email);
 
     //if user not found
     if (!user || !user._id) {
@@ -129,7 +129,7 @@ export const loginUser = async (req, res, next) => {
     const isMatch = comparePassword(password, user.password);
 
     if (isMatch) {
-      const jwt = await generateJWTs(user.email);
+      const jwt = await getJwts(user.email);
       return responseClient({
         req,
         res,
@@ -173,7 +173,7 @@ export const getUser = async (req, res) => {
 //Forgot password
 export const forgetPassword = async (req, res, next) => {
   try {
-    const user = await findUserByEmail(req.body.email);
+    const user = await getUserByEmail(req.body.email);
     // console.log("user", user);
 
     // if user not found

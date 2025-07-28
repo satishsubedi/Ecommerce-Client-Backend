@@ -76,3 +76,24 @@ Authorization: Bearer 27fe2a5d-f3aa-4d37-818e-533d0a2ea2a7
   
 }
 
+# review api start here
+### post review
+POST {{rootUrl}}/api/v1/reviews/postReview
+Content-Type: application/json
+Authorization: Bearer 27fe2a5d-f3aa-4d37-818e-533d0a2ea2a7
+
+{
+"productId":"6879282b0e7200494ef33ed5",
+"rating":5,
+"comment":"sjdfgjjwjer"
+
+}
+
+###get product reviews
+{{rootUrl}}/api/v1/reviews/getProductReview/6879282b0e7200494ef33ed5
+
+
+
+
+
+# review api ends here

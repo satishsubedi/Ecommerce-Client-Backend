@@ -6,6 +6,8 @@ import {
 } from "../models/Reviews/ReviewsModel.js";
 
 export const postReviewController = async (req, res, next) => {
+  console.log(req.body);
+
   try {
     const review = await postReview(req.body);
 

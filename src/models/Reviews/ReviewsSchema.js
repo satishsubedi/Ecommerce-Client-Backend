@@ -20,7 +20,11 @@ const reviewSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    reviewTitle: { type: String, required: true },
+    productFitting: { type: String, required: true },
+    productComforatability: { type: String, required: true },
   },
+
   { timestamps: true }
 );
 

@@ -30,8 +30,21 @@ export const postReviewController = async (req, res, next) => {
 };
 export const getProductReviewController = async (req, res, next) => {
   try {
+    console.log(req.params, "ll");
     const productReviewList = await getReviewById(req.params);
-    console.log(productReviewList);
+    return Array.isArray(productReviewList) && productReviewList.length
+      ? responseClient({
+          req,
+          res,
+          message: "here is product review",
+          payload: productReviewList,
+        })
+      : responseClient({
+          req,
+          res,
+          message: "this product has no review",
+          payload: [],
+        });
   } catch (error) {
     next(error);
   }

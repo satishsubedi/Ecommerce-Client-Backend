@@ -8,7 +8,8 @@ import {
 import { responseClient } from "./responseClient.js";
 
 export const userAuthMiddleware = async (req, res, next) => {
-  const { authorization } = req.headers; //Getting authorization from headers.
+  const { authorization } = req.headers;
+  //Getting authorization from headers.
   let message = "Unauthorized";
   // Get accessJWT from headers.
   if (authorization) {
@@ -20,6 +21,7 @@ export const userAuthMiddleware = async (req, res, next) => {
     if (decoded.email) {
       // Check if exists in session collection(Table).
       const tokenSession = await getSession({ token });
+
       if (tokenSession?._id) {
         // If exists, get user by email.
         const user = await getUserByEmail(decoded.email);

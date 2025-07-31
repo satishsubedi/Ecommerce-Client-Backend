@@ -101,14 +101,17 @@ export const loginUser = async (req, res, next) => {
 
     //Get user by email
     const user = await getUserByEmail(email);
+
     if (user?._id) {
       //Compare the password
       const isPassMatch = comparePassword(password, user.password);
+
       if (isPassMatch) {
         console.log("User authenticated succesfully...!");
 
         // Create JWTs, so that server can validate through these tokens, instead of asking for username and password
         const jwts = await getJwts(email);
+
         // Response jwts
         return responseClient({
           req,
@@ -128,6 +131,7 @@ export const loginUser = async (req, res, next) => {
 
 //Get the user info
 export const getUser = async (req, res) => {
+  console.log(req, "134");
   try {
     responseClient({
       req,

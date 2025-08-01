@@ -6,6 +6,11 @@ const reviewSchema = new mongoose.Schema(
       type: mongoose.Schema.ObjectId,
       ref: "User",
     },
+    name: { type: String, required: true },
+    status: {
+      type: String,
+      default: "inActive",
+    },
     productId: {
       type: mongoose.Schema.ObjectId,
       ref: "Product",

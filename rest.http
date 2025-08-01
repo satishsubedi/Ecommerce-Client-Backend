@@ -83,11 +83,15 @@ Content-Type: application/json
 Authorization: Bearer 27fe2a5d-f3aa-4d37-818e-533d0a2ea2a7
 
 {
-"productId":"6879282b0e7200494ef33ed5",
-"rating":5,
-"comment":"sjdfgjjwjer"
-
-}
+"userId": "68895bde5f699cc48bf4c575",
+    "name": "shekhar mehala",
+ "productId": "687927950e7200494ef33ebf",
+"rating": 5.0,
+"comment": "Average quality, not bad but not impressive.",
+"reviewTitle": "Just Okay",
+"productFitting": "Runs a bit tight",
+"productComforatability": "Moderate"
+  }
 
 ###get product reviews
 {{rootUrl}}/api/v1/reviews/getProductReview/6879282b0e7200494ef33ed5

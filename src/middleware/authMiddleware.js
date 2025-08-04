@@ -9,7 +9,7 @@ import { responseClient } from "./responseClient.js";
 
 export const userAuthMiddleware = async (req, res, next) => {
   const { authorization } = req.headers; //Getting authorization from headers.
-
+  console.log(req.body, "12");
   let message = "Unauthorized";
 
   // Get accessJWT from headers.

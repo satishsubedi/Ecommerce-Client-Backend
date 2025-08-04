@@ -17,6 +17,7 @@ import {
 } from "../services/email/emailService.js";
 import { getJwts } from "../utils/jwt.js";
 import { userResetPasswordLinkEmailTemplate } from "../services/email/emailTemplate.js";
+import UserSchema from "../models/User/UserSchema.js";
 
 // Register(SignUp) of new user.
 export const insertNewUser = async (req, res, next) => {
@@ -285,5 +286,78 @@ export const logoutUser = async (req, res, next) => {
   } catch (error) {
     responseClient({ req, res, message: error.message, statusCode: 500 });
     return next(error);
+  }
+};
+
+export const toggleWishlistController = async (req, res, next) => {
+  try {
+    console.log(req.body);
+    const { productId } = req.body;
+    // const { user } = req.userInfo;
+
+    if (req.userInfo.wishList.includes(productId)) {
+      const obj = req.userInfo.wishList?.filter(
+        (list) => list.toString() !== productId.toString()
+      );
+      console.log(req.userInfo.wishList, "300");
+      console.log(obj, "301");
+      const user = await updateUser(
+        { _id: req.userInfo._id },
+        { $set: { wishList: obj } }
+      );
+
+      return responseClient({
+        req,
+        res,
+        message: "This product is aready in your wishlist",
+
+        payload: user.wishList,
+      });
+    } else {
+      const user = await updateUser(
+        { _id: req.userInfo._id },
+        { $set: { wishList: [...req.userInfo.wishList, productId] } }
+      );
+      console.log(user);
+      responseClient({
+        req,
+        res,
+        message: "This product is added to your wishlist",
+
+        payload: user.wishList,
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getWishlistProducts = async (req, res) => {
+  try {
+    const user = await UserSchema.findById(req.userInfo._id).populate(
+      "wishList"
+    );
+    if (!user) {
+      return responseClient({
+        req,
+        res,
+        statusCode: 404,
+        message: "User not found",
+      });
+    }
+    return responseClient({
+      req,
+      res,
+      statusCode: 200,
+      message: "Wishlist fetched",
+      payload: user.wishList,
+    });
+  } catch (error) {
+    responseClient({
+      req,
+      res,
+      statusCode: 500,
+      message: error.message || "Server error",
+    });
   }
 };

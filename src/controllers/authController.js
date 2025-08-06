@@ -126,6 +126,26 @@ export const loginUser = async (req, res, next) => {
       });
     }
 
+    if (user?._id) {
+      //Compare the password
+      const isPassMatch = comparePassword(password, user.password);
+
+      if (isPassMatch) {
+        console.log("User authenticated succesfully...!");
+
+        // Create JWTs, so that server can validate through these tokens, instead of asking for username and password
+        const jwts = await getJwts(email);
+
+        // Response jwts
+        return responseClient({
+          req,
+          res,
+          message: "Login successful...!",
+          payload: jwts,
+        });
+      }
+    }
+
     //check if password is correct
     const isMatch = comparePassword(password, user.password);
 
@@ -154,6 +174,7 @@ export const loginUser = async (req, res, next) => {
 
 //Get the user info
 export const getUser = async (req, res) => {
+  console.log(req, "134");
   try {
     responseClient({
       req,

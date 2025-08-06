@@ -129,26 +129,29 @@ export const getAllFilterProductsController = async (req, res, next) => {
     if (sale === "true") {
       filter.sale = true;
     }
-
     if (brand) {
       filter.brand = brand.includes(",") ? { $in: brand.split(",") } : brand;
     }
-    console.log(filter);
+    if (productPath) {
+      filter.productPath = {
+        $regex: new RegExp(`^${productPath}`),
+        $options: "i",
+      };
+    }
     const products = await getAllProductsByPath(filter);
 
-    console.log(products.length);
     products?.length > 0 && Array.isArray(products)
       ? responseClient({
           payload: products,
-          message: products.length ? "Filtered products" : "No products found",
+          message: "Filtered products",
           req,
           res,
         })
       : responseClient({
-          message: "no product found",
+          message: "No product Found",
           req,
           res,
-          // statusCode: 401,
+
           payload: [],
         });
   } catch (error) {

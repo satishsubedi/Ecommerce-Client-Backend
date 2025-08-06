@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    viewedProducts: [],
     lName: {
       type: String,
       required: true,

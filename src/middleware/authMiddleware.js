@@ -8,78 +8,65 @@ import {
 import { responseClient } from "./responseClient.js";
 
 export const userAuthMiddleware = async (req, res, next) => {
-  const { authorization } = req.headers; //Getting authorization from headers.
-  console.log(req.body, "12");
+  const { authorization } = req.headers;
   let message = "Unauthorized";
 
-  // Get accessJWT from headers.
-  if (authorization) {
-    try {
-      const token = authorization;
+  try {
+    if (authorization) {
+      const token = authorization.startsWith("Bearer")
+        ? authorization.split(" ")[1]
+        : authorization;
 
-      //Check if accessJWT is valid.
       const decoded = await verifyAccessJWT(token);
 
-      if (decoded?.email) {
-        // Check if exists in session collection(Table).
+      if (decoded.email) {
         const tokenSession = await getSession({ token });
 
         if (tokenSession?._id) {
-          // If exists, get user by email.
           const user = await getUserByEmail(decoded.email);
 
           if (user?._id && user.status === "active") {
-            //Return the user.
             req.userInfo = user;
             return next();
           }
         }
-      } else {
-        message = decoded === "jwt expired" ? decoded : "Invalid token payload";
-        // console.log(message);
       }
-    } catch (error) {
-      message = "Token verification failed";
-      console.error("Token verification error:", error);
+
+      message = decoded === "jwt expired" ? decoded : "Unauthorized";
     }
+  } catch {
+    message = "Server error";
   }
-  //   const message = decoded === "jwt expired" ? decoded : "Unauthorized access";
+
   responseClient({ req, res, message, statusCode: 401 });
 };
 
 export const renewAccessJWTMiddleware = async (req, res) => {
-  const { authorization } = req.headers; //Getting authorization from headers.
-
+  const { authorization } = req.headers;
   let message = "Unauthorized";
 
-  // Get accessJWT from headers.
   if (authorization) {
-    const token = authorization;
+    const token = authorization.startsWith("Bearer ")
+      ? authorization.split(" ")[1]
+      : authorization;
 
-    //Check if accessJWT is valid.
     const decoded = await verifyRefreshJWT(token);
-
     if (decoded.email) {
-      // Check if exists in session collection(Table).
-
       const user = await getOneUser({
         email: decoded.email,
         refreshJWT: token,
       });
-
       if (user?._id) {
-        // Create new accessJWT
-        const token = await createAccessJWT(decoded.email);
-        //Return accessJWT
+        const newToken = await createAccessJWT(decoded.email);
         return responseClient({
           req,
           res,
           message: "Here is the accessJWT",
-          payload: token,
+          payload: newToken,
         });
       }
     }
   }
-  //   const message = decoded === "jwt expired" ? decoded : "Unauthorized access";
+
   responseClient({ req, res, message, statusCode: 401 });
 };

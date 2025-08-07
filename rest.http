@@ -105,3 +105,19 @@ Authorization: Bearer 27fe2a5d-f3aa-4d37-818e-533d0a2ea2a7
 # product api 
 ###
 GET {{rootUrl}}/api/v1/product/bySlug/football-pro
+
+
+
+
+# recomendation api start here
+
+###
+POST {{rootUrl}}/api/v1/recomendation
+Content-Type: application/json
+
+{"userId":"123",
+"interactionId":"1","productId":"687927130e7200494ef33ea6","type":"view"}
+
+
+
+# recomendation api ends here

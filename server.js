@@ -12,6 +12,8 @@ import categoryRouter from "./src/routes/categoryRoutes.js";
 import webhookRouter from "./src/routes/stripeWebhook.js";
 import stripeRouter from "./src/routes/stripe.js";
 
+import reviewRouter from "./src/routes/reviewRoute.js";
+
 const app = express();
 const PORT = process.env.PORT || 8001;
 
@@ -43,6 +45,7 @@ app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/product", productRouter);
 app.use("/api/v1/category", categoryRouter);
 app.use("/api/v1/payment", stripeRouter);
+app.use("/api/v1/reviews", reviewRouter);
 
 //end poins for image
 app.use("/api/v1/all", imageRoutes);

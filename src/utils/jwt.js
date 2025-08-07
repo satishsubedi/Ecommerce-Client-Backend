@@ -46,6 +46,8 @@ export const verifyRefreshJWT = (token) => {
   }
 };
 export const getJwts = async (email) => {
+  
+
   return {
     accessJWT: await createAccessJWT(email),
     refreshJWT: await createRefreshJWT(email),

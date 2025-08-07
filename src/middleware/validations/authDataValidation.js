@@ -34,5 +34,6 @@ export const loginDataValidation = (req, res, next) => {
     email: EMAIL_REQUIRED,
     password: PASSWORD_REQUIRED,
   };
+
   validateData({ req, res, next, obj });
 };

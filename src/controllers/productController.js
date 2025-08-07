@@ -3,6 +3,7 @@ import {
   getAllProducts,
   getAllProductsByPath,
   getProductById,
+  getProductBySlug,
   getProductsByCategoryId,
 } from "../models/Product/ProductModel.js";
 // import { createRegexFilter } from "../utils/createRegexFilter.js";
@@ -42,6 +43,40 @@ export const getProductByIdController = async (req, res, next) => {
     if (_id) {
       // call model
       const product = await getProductById({ _id });
+      if (product?._id) {
+        return responseClient({
+          message: "here is the product",
+          res,
+          req,
+          payload: product,
+        });
+      } else {
+        return responseClient({
+          message: "no product found",
+          res,
+          req,
+          statusCode: 400,
+        });
+      }
+    } else {
+      return responseClient({
+        message: "you must send id",
+        res,
+        statusCode: 400,
+        req,
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+export const getSingleProductsController = async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+
+    if (slug) {
+      // call model
+      const product = await getProductBySlug({ slug });
       if (product?._id) {
         return responseClient({
           message: "here is the product",
@@ -158,3 +193,14 @@ export const getAllFilterProductsController = async (req, res, next) => {
     next(error);
   }
 };
+
+// recomeded product controller start here
+export const postRecommendedController = (req, res, next) => {
+  try {
+    console.log(req.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// recomeded product controller ends here

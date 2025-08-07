@@ -13,5 +13,7 @@ productRouter.get("/Id/:_id", getProductByIdController);
 productRouter.get("/", getAllProductsController);
 productRouter.get("/filterProduct", getAllFilterProductsController);
 productRouter.get("/bySlug/:slug", getSingleProductsController);
+productRouter.post("/recoomeded", postRecommendedController);
+
 
 export default productRouter;

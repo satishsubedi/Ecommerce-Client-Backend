@@ -193,3 +193,14 @@ export const getAllFilterProductsController = async (req, res, next) => {
     next(error);
   }
 };
+
+// recomeded product controller start here
+export const postRecommendedController = (req, res, next) => {
+  try {
+    console.log(req.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// recomeded product controller ends here

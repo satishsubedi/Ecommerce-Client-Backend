@@ -40,6 +40,7 @@ Content-Type: application/json
 }
 
 
+
 ### Get user's Info
 GET {{rootUrl}}/api/v1/auth/user-info
 Authorization : bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InJvaGl0aGNsb3VkcmVhZHkyQGdtYWlsLmNvbSIsImlhdCI6MTc0OTA4MTgzOCwiZXhwIjoxNzQ5MDkyNjM4fQ.EEJex59_pnaTZLiDZZu4uVfOzc652NU9EWA9fAu4hg4
@@ -115,9 +116,13 @@ GET {{rootUrl}}/api/v1/product/bySlug/football-pro
 POST {{rootUrl}}/api/v1/recomendation
 Content-Type: application/json
 
-{"userId":"123",
-"interactionId":"1","productId":"687927130e7200494ef33ea6","type":"view"}
-
-
+{"userId":"68895bde5f699cc48bf4c575",
+"interactionId":"1","productId":"687925f60e7200494ef33e84","type":"purchase"}
+### get recomendation
+GET  {{rootUrl}}/api/v1/recomendation/6885b4ef485f4d5aa6279fcb
 
 # recomendation api ends here
+
+
+# ###
+# GET {{rootUrl}}/api/v1/category

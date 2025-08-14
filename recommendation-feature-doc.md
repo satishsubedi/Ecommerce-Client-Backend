@@ -5,16 +5,18 @@ This document describes the backend recommendation feature for the Client-Backen
 
 ---
 
+
 ## 1. Interaction Tracking
 - All product interactions (view, purchase, cart, rating) are recorded in the `Interaction` collection.
-- Each interaction includes: `userId` (for logged-in users), `guestId` (for guests), `productId`, `type`, and `timestamp`.
+- Each interaction includes: `userId` (for logged-in users), `productId`, `type`, and `timestamp`. For guests, only `productId`, `type`, and `timestamp` are set; the unique `_id` (interactionId) is returned to the frontend.
 - Deduplication logic prevents rapid repeated interactions (DoS/spam protection).
+- For guests, store the returned `interactionId` in localStorage. If the user interacts from multiple devices, each device will have its own interactionId(s).
+- When the user logs in, collect all interactionIds from all devices (e.g., via backend sync or user input) and associate them with the userId. This allows merging all guest interactions into the user's history for unified recommendations.
 
 **Example Schema:**
 ```js
 const InteractionSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  guestId: { type: String },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // optional for guests
   productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
   type: { type: String, enum: ["view", "purchase", "cart", "rating"] },
   timestamp: { type: Date, default: Date.now },
@@ -23,19 +25,29 @@ const InteractionSchema = new mongoose.Schema({
 
 ---
 
+
 ## 2. Recommendation API
-- Endpoint: `GET /api/recommendations?userId=...` or `?guestId=...`
+- Endpoint: `GET /api/recommendations?userId=...` or `?interactionId=...` or `?interactionIds=...` (comma-separated)
 - For logged-in users, uses both content-based and collaborative filtering.
 - For guests, uses only content-based filtering.
+- If a user logs in after interacting as a guest on multiple devices, send all relevant `interactionIds` to the backend to merge their histories for recommendations.
 
 **Example Controller:**
 ```js
 export const getRecommendations = async (req, res, next) => {
-  const { userId, guestId } = req.query;
-  let interactions;
-  if (userId) interactions = await Interaction.find({ userId });
-  else if (guestId) interactions = await Interaction.find({ guestId });
-  else return res.status(400).json({ error: "No user or guest ID provided" });
+  const { userId, interactionId, interactionIds } = req.query;
+  let interactions = [];
+  if (userId) {
+    interactions = await Interaction.find({ userId });
+  } else if (interactionId) {
+    const interaction = await Interaction.findById(interactionId);
+    if (interaction) interactions = [interaction];
+  } else if (interactionIds) {
+    const ids = interactionIds.split(',');
+    interactions = await Interaction.find({ _id: { $in: ids } });
+  } else {
+    return res.status(400).json({ error: "No user or interaction ID(s) provided" });
+  }
 
   const interactedProductIds = interactions.map(i => i.productId);
   const interactedProducts = await Product.find({ _id: { $in: interactedProductIds } });
@@ -96,10 +108,12 @@ export const getRecommendations = async (req, res, next) => {
 ---
 
 ## 4. Guest vs. Logged-In User Handling
+
 | User Type   | Tracking Method         | Recommendation Logic         | ID Used      |
 |-------------|------------------------|-----------------------------|--------------|
 | Logged-in   | DB (userId)            | Hybrid (content + collab)   | userId       |
-| Guest       | localStorage (guestId) | Content-based only          | guestId      |
+| Guest       | localStorage (interactionId(s)) | Content-based only          | interactionId(s) |
+| Merged User | DB (userId) + all guest interactionIds | Hybrid (all interactions merged) | userId + interactionIds |
 
 ---
 

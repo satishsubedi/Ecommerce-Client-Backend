@@ -129,8 +129,21 @@ export const getRecomendationController = async (req, res, next) => {
     const groupCategoriesAndinteractedProductIds = {
       $group: {
         _id: null,
-        categories: { $push:  {category: "$_id" , score: "$totalScore"} },
-        iteractedProducts: { $push:   "$productIds"  },
+        categories: { $push: { category: "$_id", score: "$totalScore" } },
+        iteractedProducts: { $first: "$productIds" },
+      },
+    };
+    const similarUserProducts = {
+      $lookup: {
+        from: "recomendations",
+        let: { interacted: "$iteractedProducts" },
+        pipeline: [
+          { $match: { $expr: { $in: ["$productId", "$$interacted"] } } },
+          { $group: { _id: "$userId", common: { $sum: 1 } } },
+          { $sort: { common: -1 } },
+          // { $limit: 10 },
+        ],
+        as: "similarUsers",
       },
     };
 
@@ -144,11 +157,42 @@ export const getRecomendationController = async (req, res, next) => {
       groupProductCategory,
       sortWithScore,
       groupCategoriesAndinteractedProductIds,
-      
+      similarUserProducts,
+      {
+        $set: {
+          similarUserIds: {
+            $map: { input: "$similarUsers", as: "u", in: "$$u._id" },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "recommendations",
+
+          let: {
+            simUsers: "$similarUserIds",
+            interacted: "$interactedProducts",
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $in: ["$userId", "$$simUsers"] },
+                    { $not: [{ $in: ["$productId", "$$interacted"] }] },
+                  ],
+                },
+              },
+            },
+            { $group: { _id: "$productId", cfScore: { $sum: 2 } } },
+          ],
+          as: "cfCandidates",
+        },
+      },
     ];
 
     const reult = await getRecomendationModel(pipeline);
-    
+
     console.log(JSON.stringify(reult, null, 2));
   } catch (error) {
     next(error);

@@ -38,11 +38,6 @@ app.use(
 app.use(morgan("dev"));
 // app.use(express.json());
 
-import authRoute from "./src/routes/authRoute.js";
-import imageRoutes from "./src/routes/imageRoute.js";
-import { responseClient } from "./src/middleware/responseClient.js";
-import productRouter from "./src/routes/productRoutes.js";
-import categoryRouter from "./src/routes/categoryRoutes.js";
 import reviewRouter from "./src/routes/reviewRoute.js";
 //API endpoints
 app.use("/api/v1/auth", authRoute);

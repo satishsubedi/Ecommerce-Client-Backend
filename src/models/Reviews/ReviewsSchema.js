@@ -9,7 +9,8 @@ const reviewSchema = new mongoose.Schema(
     name: { type: String, required: true },
     status: {
       type: String,
-      default: "inActive",
+      default: "pending",
+      enum: ["pending", "approved", "rejected"],
     },
     productId: {
       type: mongoose.Schema.ObjectId,

@@ -17,3 +17,10 @@ export const updateProductsRating = async (filter, update) => {
     new: true,
   });
 };
+export const getAllRecommendedProduct = async () => {
+  return await productCollection
+    .find({})
+    .sort({ updatedAt: -1 }) // newest first
+    .limit(5)
+    .exec();
+};

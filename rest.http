@@ -119,7 +119,10 @@ Content-Type: application/json
 {"userId":"68895bde5f699cc48bf4c575",
 "interactionId":"1","productId":"687925f60e7200494ef33e84","type":"purchase"}
 ### get recomendation
-GET  {{rootUrl}}/api/v1/recomendation/6885b4ef485f4d5aa6279fcb
+GET  {{rootUrl}}/api/v1/recomendation
+Content-Type: application/json
+
+{"interactionId":"1"}
 
 # recomendation api ends here
 

@@ -11,34 +11,28 @@ export const createRecomendationController = async (req, res, next) => {
   try {
     const { userId, interactionId, productId, type } = req.body;
 
-    if (userId) {
-      // check if same interation is already in db
-      const recomendation = await checkRecomendationModel({
-        interactionId,
-        productId,
-        type,
-        userId,
+    // check if same interation is already in db
+    const recomendation = await checkRecomendationModel(req.body);
+
+    if (recomendation) {
+      console.log(recomendation);
+      //  update recomendation
+      await updatetRecomendationModel(req.body, {
+        $set: { updatedAt: Date.now() },
       });
-      if (recomendation) {
-        console.log(recomendation);
-        //  update recomendation
-        await updatetRecomendationModel(req.body, {
-          $set: { updatedAt: Date.now() },
-        });
-        return responseClient({
-          message: " updated",
-          req,
-          res,
-        });
-      } else {
-        // add
-        await createRecomendationModel(req.body);
-        return responseClient({
-          message: " added",
-          req,
-          res,
-        });
-      }
+      return responseClient({
+        message: " updated",
+        req,
+        res,
+      });
+    } else {
+      // add
+      await createRecomendationModel(req.body);
+      return responseClient({
+        message: " added",
+        req,
+        res,
+      });
     }
   } catch (error) {
     next(error);
@@ -46,10 +40,14 @@ export const createRecomendationController = async (req, res, next) => {
 };
 
 // get reccomedation controller start here
+const INTERACTION_WEIGHTS = {
+  view: 0.2,
+  cart: 0.5,
+  purchase: 1,
+  rating: 0.7,
+};
 
-const LAMBDA = 0.05;
-
-const INTERACTION_WEIGHTS = { view: 1, cart: 2, purchase: 3, rating: 2.5 };
+const LAMBDA = 0.1; // Decay rate
 
 // export const getRecomendationController = async (req, res, next) => {
 //   try {
@@ -530,100 +528,428 @@ const INTERACTION_WEIGHTS = { view: 1, cart: 2, purchase: 3, rating: 2.5 };
 //    }
 
 // };
+// export const getRecomendationController = async (req, res, next) => {
+//   try {
+//     // --- SAFETY GUARDS (remove if you already import them correctly) ---
+//     // If you already import these, keep your imports and delete this block.
+//     const WEIGHTS =
+//       typeof INTERACTION_WEIGHTS === "object" && INTERACTION_WEIGHTS
+//         ? INTERACTION_WEIGHTS
+//         : { view: 1, cart: 3, purchase: 5, rating: 2 }; // sensible defaults
+
+//     const L = typeof LAMBDA === "number" ? LAMBDA : 0.1; // sensible default decay
+
+//     if (
+//       req.params.userId &&
+//       mongoose.Types.ObjectId.isValid(req.params.userId)
+//     ) {
+//       const userId = new mongoose.Types.ObjectId(req.params.userId);
+
+//       const match = { $match: { userId } };
+
+//       const joinProductWithReccomendation = {
+//         $lookup: {
+//           from: "products",
+//           localField: "productId",
+//           foreignField: "_id",
+//           as: "product",
+//         },
+//       };
+
+//       // if a product doc is missing, you probably prefer to drop the row (default),
+//       // but if you want to keep it, set preserveNullAndEmptyArrays: true.
+//       const destructureProduct = {
+//         $unwind: { path: "$product", preserveNullAndEmptyArrays: false },
+//       };
+
+//       const daysAgo = {
+//         $addFields: {
+//           daysAgo: {
+//             $divide: [
+//               { $subtract: [new Date(), "$updatedAt"] },
+//               1000 * 60 * 60 * 24,
+//             ],
+//           },
+//         },
+//       };
+
+//       const weight = {
+//         $addFields: {
+//           weight: {
+//             $switch: {
+//               branches: [
+//                 { case: { $eq: ["$type", "view"] }, then: WEIGHTS.view },
+//                 { case: { $eq: ["$type", "cart"] }, then: WEIGHTS.cart },
+//                 {
+//                   case: { $eq: ["$type", "purchase"] },
+//                   then: WEIGHTS.purchase,
+//                 },
+//                 { case: { $eq: ["$type", "rating"] }, then: WEIGHTS.rating },
+//               ],
+//               default: 1,
+//             },
+//           },
+//         },
+//       };
+
+//       const timeDecayScore = {
+//         $addFields: {
+//           timeDecayScore: {
+//             $multiply: ["$weight", { $exp: { $multiply: [-L, "$daysAgo"] } }],
+//           },
+//         },
+//       };
+
+//       const groupProductCategory = {
+//         $group: {
+//           _id: "$product.categoryId",
+//           totalScore: { $sum: "$timeDecayScore" },
+//           productIds: { $addToSet: "$productId" },
+//         },
+//       };
+
+//       const sortWithScore = { $sort: { totalScore: -1 } };
+
+//       const groupCategoriesAndinteractedProductIds = {
+//         $group: {
+//           _id: null,
+//           categories: { $push: { category: "$_id", score: "$totalScore" } },
+//           allProductIds: { $push: "$productIds" },
+//         },
+//       };
+
+//       const pipeline = [
+//         match,
+//         joinProductWithReccomendation,
+//         destructureProduct,
+//         daysAgo,
+//         weight,
+//         timeDecayScore,
+//         groupProductCategory,
+//         sortWithScore,
+//         groupCategoriesAndinteractedProductIds,
+
+//         // reduce productIds into interactedProducts
+//         {
+//           $project: {
+//             categories: 1,
+//             interactedProducts: {
+//               $reduce: {
+//                 input: "$allProductIds",
+//                 initialValue: [],
+//                 in: { $setUnion: ["$$value", "$$this"] },
+//               },
+//             },
+//           },
+//         },
+
+//         // Similar users
+//         {
+//           $lookup: {
+//             from: "recommendations", // ensure collection name is correct
+//             let: { interacted: "$interactedProducts" },
+//             pipeline: [
+//               { $match: { $expr: { $in: ["$productId", "$$interacted"] } } },
+//               { $group: { _id: "$userId", common: { $sum: 1 } } },
+//               { $sort: { common: -1 } },
+//               { $limit: 10 },
+//             ],
+//             as: "similarUsers",
+//           },
+//         },
+
+//         {
+//           $set: {
+//             similarUserIds: {
+//               $map: { input: "$similarUsers", as: "u", in: "$$u._id" },
+//             },
+//           },
+//         },
+
+//         // Collaborative filtering candidates
+//         {
+//           $lookup: {
+//             from: "recommendations",
+//             let: {
+//               simUsers: "$similarUserIds",
+//               interacted: "$interactedProducts",
+//             },
+//             pipeline: [
+//               {
+//                 $match: {
+//                   $expr: {
+//                     $and: [
+//                       { $in: ["$userId", "$$simUsers"] },
+//                       { $eq: [{ $in: ["$productId", "$$interacted"] }, false] },
+//                     ],
+//                   },
+//                 },
+//               },
+//               { $group: { _id: "$productId", cfScore: { $sum: 2 } } },
+//             ],
+//             as: "cfCandidates",
+//           },
+//         },
+
+//         // Content-based by category
+//         {
+//           $lookup: {
+//             from: "products",
+//             let: {
+//               cats: "$categories.category",
+//               interacted: "$interactedProducts",
+//             },
+//             pipeline: [
+//               {
+//                 $match: {
+//                   $expr: {
+//                     $and: [
+//                       { $in: ["$categoryId", "$$cats"] },
+//                       { $eq: [{ $in: ["$_id", "$$interacted"] }, false] },
+//                     ],
+//                   },
+//                 },
+//               },
+//               { $group: { _id: "$_id", cbScore: { $sum: 1.5 } } },
+//             ],
+//             as: "cbCandidates",
+//           },
+//         },
+
+//         // Recent random (last 30 days), excluding interacted
+//         {
+//           $lookup: {
+//             from: "products",
+//             let: { interacted: "$interactedProducts" },
+//             pipeline: [
+//               {
+//                 $match: {
+//                   $expr: { $eq: [{ $in: ["$_id", "$$interacted"] }, false] },
+//                   createdAt: {
+//                     $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+//                   },
+//                 },
+//               },
+//               { $sample: { size: 50 } },
+//               { $project: { _id: 1, recentScore: { $literal: 0.5 } } },
+//             ],
+//             as: "recentRandomCandidates",
+//           },
+//         },
+
+//         // Popular/newest fallback (only if no CF/CB)
+//         {
+//           $lookup: {
+//             from: "products",
+//             let: { interacted: "$interactedProducts" },
+//             pipeline: [
+//               {
+//                 $match: {
+//                   $expr: { $eq: [{ $in: ["$_id", "$$interacted"] }, false] },
+//                 },
+//               },
+//               { $sort: { createdAt: -1 } },
+//               { $limit: 50 },
+//               { $project: { _id: 1, popularScore: { $literal: 0.3 } } },
+//             ],
+//             as: "popularFallbackCandidates",
+//           },
+//         },
+
+//         // Merge candidate streams
+//         {
+//           $project: {
+//             merged: {
+//               $concatArrays: [
+//                 "$cfCandidates",
+//                 "$cbCandidates",
+//                 "$recentRandomCandidates",
+//                 {
+//                   $cond: [
+//                     {
+//                       $gt: [
+//                         {
+//                           $size: {
+//                             $concatArrays: ["$cfCandidates", "$cbCandidates"],
+//                           },
+//                         },
+//                         0,
+//                       ],
+//                     },
+//                     [],
+//                     "$popularFallbackCandidates",
+//                   ],
+//                 },
+//               ],
+//             },
+//           },
+//         },
+
+//         { $unwind: "$merged" },
+
+//         // Score (fix $ifNull usage)
+//         {
+//           $group: {
+//             _id: "$merged._id",
+//             totalScore: {
+//               $sum: {
+//                 $add: [
+//                   { $ifNull: ["$merged.cfScore", 0] },
+//                   { $ifNull: ["$merged.cbScore", 0] },
+//                   { $ifNull: ["$merged.recentScore", 0] },
+//                   { $ifNull: ["$merged.popularScore", 0] },
+//                 ],
+//               },
+//             },
+//           },
+//         },
+
+//         // Attach product and finalize
+//         {
+//           $lookup: {
+//             from: "products",
+//             localField: "_id",
+//             foreignField: "_id",
+//             as: "product",
+//           },
+//         },
+//         { $unwind: "$product" },
+//         { $sort: { totalScore: -1 } },
+//         { $limit: 6 },
+//         {
+//           $project: {
+//             _id: 0,
+//             productId: "$product._id",
+//             name: "$product.slug",
+//             category: "$product.categoryId",
+//             totalScore: 1,
+//             price: "$product.price",
+//             description: "$product.description",
+//           },
+//         },
+//       ];
+
+//       const result = await getRecomendationModel(pipeline);
+
+//       // Avoid "Cannot read properties of undefined (reading 'length')"
+//       const safe = Array.isArray(result) ? result : [];
+
+//       console.log(safe.length);
+//       console.log(JSON.stringify(safe, null, 2));
+
+//       // send back to client (optional, but typical for a controller)
+//       console.log(safe);
+//       return res.status(200).json(safe);
+//     } else {
+//       const recommendations = await getAllRecommendedProduct();
+//       const safe = Array.isArray(recommendations) ? recommendations : [];
+//       console.log(safe.length);
+//       return res.status(200).json(safe);
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     next(error);
+//   }
+// };
+
+// Constants for interaction weights and time decay
+
 export const getRecomendationController = async (req, res, next) => {
   try {
-    // --- SAFETY GUARDS (remove if you already import them correctly) ---
-    // If you already import these, keep your imports and delete this block.
-    const WEIGHTS =
-      typeof INTERACTION_WEIGHTS === "object" && INTERACTION_WEIGHTS
-        ? INTERACTION_WEIGHTS
-        : { view: 1, cart: 3, purchase: 5, rating: 2 }; // sensible defaults
+    const { userId, interactionId } = req.body;
+    const ObjectId = new mongoose.Types.ObjectId(userId);
 
-    const L =
-      typeof LAMBDA === "number"
-        ? LAMBDA
-        : 0.1; // sensible default decay
+    if (userId && !mongoose.Types.ObjectId.isValid(ObjectId)) {
+      return responseClient({
+        req,
+        res,
+        message: "invalid usrerId",
+        statusCode: 400,
+      });
+    }
+    const matchuserId = {
+      $match: { userId: ObjectId },
+    };
+    const matchinteractiondId = { $match: { interactionId: interactionId } };
+    const match = userId ? matchuserId : matchinteractiondId;
+    console.log(match);
+    if (userId || interactionId) {
+      const pipeline = [
+        match,
 
-    if (req.params.userId && mongoose.Types.ObjectId.isValid(req.params.userId)) {
-      const userId = new mongoose.Types.ObjectId(req.params.userId);
-
-      const match = { $match: { userId } };
-
-      const joinProductWithReccomendation = {
-        $lookup: {
-          from: "products",
-          localField: "productId",
-          foreignField: "_id",
-          as: "product",
-        },
-      };
-
-      // if a product doc is missing, you probably prefer to drop the row (default),
-      // but if you want to keep it, set preserveNullAndEmptyArrays: true.
-      const destructureProduct = { $unwind: { path: "$product", preserveNullAndEmptyArrays: false } };
-
-      const daysAgo = {
-        $addFields: {
-          daysAgo: {
-            $divide: [{ $subtract: [new Date(), "$updatedAt"] }, 1000 * 60 * 60 * 24],
+        {
+          $lookup: {
+            from: "products",
+            localField: "productId",
+            foreignField: "_id",
+            as: "product",
           },
         },
-      };
+        { $unwind: "$product" },
 
-      const weight = {
-        $addFields: {
-          weight: {
-            $switch: {
-              branches: [
-                { case: { $eq: ["$type", "view"] }, then: WEIGHTS.view },
-                { case: { $eq: ["$type", "cart"] }, then: WEIGHTS.cart },
-                { case: { $eq: ["$type", "purchase"] }, then: WEIGHTS.purchase },
-                { case: { $eq: ["$type", "rating"] }, then: WEIGHTS.rating },
+        {
+          $addFields: {
+            daysAgo: {
+              $divide: [
+                { $subtract: [new Date(), "$updatedAt"] },
+                1000 * 60 * 60 * 24,
               ],
-              default: 1,
+            },
+            weight: {
+              $switch: {
+                branches: [
+                  {
+                    case: { $eq: ["$type", "view"] },
+                    then: INTERACTION_WEIGHTS.view,
+                  },
+                  {
+                    case: { $eq: ["$type", "cart"] },
+                    then: INTERACTION_WEIGHTS.cart,
+                  },
+                  {
+                    case: { $eq: ["$type", "purchase"] },
+                    then: INTERACTION_WEIGHTS.purchase,
+                  },
+                  {
+                    case: { $eq: ["$type", "rating"] },
+                    then: INTERACTION_WEIGHTS.rating,
+                  },
+                ],
+                default: 1,
+              },
             },
           },
         },
-      };
 
-      const timeDecayScore = {
-        $addFields: {
-          timeDecayScore: {
-            $multiply: ["$weight", { $exp: { $multiply: [-L, "$daysAgo"] } }],
+        {
+          $addFields: {
+            timeDecayScore: {
+              $multiply: [
+                "$weight",
+                { $exp: { $multiply: [-LAMBDA, "$daysAgo"] } },
+              ],
+            },
           },
         },
-      };
 
-      const groupProductCategory = {
-        $group: {
-          _id: "$product.categoryId",
-          totalScore: { $sum: "$timeDecayScore" },
-          productIds: { $addToSet: "$productId" },
+        {
+          $group: {
+            _id: "$product.categoryId",
+            totalScore: { $sum: "$timeDecayScore" },
+            productIds: { $addToSet: "$productId" },
+          },
         },
-      };
 
-      const sortWithScore = { $sort: { totalScore: -1 } };
+        { $sort: { totalScore: -1 } },
 
-      const groupCategoriesAndinteractedProductIds = {
-        $group: {
-          _id: null,
-          categories: { $push: { category: "$_id", score: "$totalScore" } },
-          allProductIds: { $push: "$productIds" },
+        {
+          $group: {
+            _id: null,
+            categories: { $push: { category: "$_id", score: "$totalScore" } },
+            allProductIds: { $push: "$productIds" },
+          },
         },
-      };
 
-      const pipeline = [
-        match,
-        joinProductWithReccomendation,
-        destructureProduct,
-        daysAgo,
-        weight,
-        timeDecayScore,
-        groupProductCategory,
-        sortWithScore,
-        groupCategoriesAndinteractedProductIds,
-
-        // reduce productIds into interactedProducts
         {
           $project: {
             categories: 1,
@@ -637,10 +963,9 @@ export const getRecomendationController = async (req, res, next) => {
           },
         },
 
-        // Similar users
         {
           $lookup: {
-            from: "recommendations", // ensure collection name is correct
+            from: "recommendations",
             let: { interacted: "$interactedProducts" },
             pipeline: [
               { $match: { $expr: { $in: ["$productId", "$$interacted"] } } },
@@ -654,22 +979,26 @@ export const getRecomendationController = async (req, res, next) => {
 
         {
           $set: {
-            similarUserIds: { $map: { input: "$similarUsers", as: "u", in: "$$u._id" } },
+            similarUserIds: {
+              $map: { input: "$similarUsers", as: "u", in: "$$u._id" },
+            },
           },
         },
 
-        // Collaborative filtering candidates
         {
           $lookup: {
             from: "recommendations",
-            let: { simUsers: "$similarUserIds", interacted: "$interactedProducts" },
+            let: {
+              simUsers: "$similarUserIds",
+              interacted: "$interactedProducts",
+            },
             pipeline: [
               {
                 $match: {
                   $expr: {
                     $and: [
                       { $in: ["$userId", "$$simUsers"] },
-                      { $eq: [{ $in: ["$productId", "$$interacted"] }, false] },
+                      { $not: [{ $in: ["$productId", "$$interacted"] }] },
                     ],
                   },
                 },
@@ -680,18 +1009,20 @@ export const getRecomendationController = async (req, res, next) => {
           },
         },
 
-        // Content-based by category
         {
           $lookup: {
             from: "products",
-            let: { cats: "$categories.category", interacted: "$interactedProducts" },
+            let: {
+              cats: "$categories.category",
+              interacted: "$interactedProducts",
+            },
             pipeline: [
               {
                 $match: {
                   $expr: {
                     $and: [
                       { $in: ["$categoryId", "$$cats"] },
-                      { $eq: [{ $in: ["$_id", "$$interacted"] }, false] },
+                      { $not: [{ $in: ["$_id", "$$interacted"] }] },
                     ],
                   },
                 },
@@ -702,7 +1033,6 @@ export const getRecomendationController = async (req, res, next) => {
           },
         },
 
-        // Recent random (last 30 days), excluding interacted
         {
           $lookup: {
             from: "products",
@@ -710,24 +1040,31 @@ export const getRecomendationController = async (req, res, next) => {
             pipeline: [
               {
                 $match: {
-                  $expr: { $eq: [{ $in: ["$_id", "$$interacted"] }, false] },
-                  createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+                  $expr: { $not: [{ $in: ["$_id", "$$interacted"] }] },
+                  createdAt: {
+                    $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                  },
                 },
               },
               { $sample: { size: 50 } },
-              { $project: { _id: 1, recentScore: { $literal: 0.5 } } },
+              {
+                $project: { _id: 1, recentRandomScore: { $literal: 0.5 } },
+              },
             ],
             as: "recentRandomCandidates",
           },
         },
 
-        // Popular/newest fallback (only if no CF/CB)
         {
           $lookup: {
             from: "products",
             let: { interacted: "$interactedProducts" },
             pipeline: [
-              { $match: { $expr: { $eq: [{ $in: ["$_id", "$$interacted"] }, false] } } },
+              {
+                $match: {
+                  $expr: { $not: [{ $in: ["$_id", "$$interacted"] }] },
+                },
+              },
               { $sort: { createdAt: -1 } },
               { $limit: 50 },
               { $project: { _id: 1, popularScore: { $literal: 0.3 } } },
@@ -736,19 +1073,45 @@ export const getRecomendationController = async (req, res, next) => {
           },
         },
 
-        // Merge candidate streams
         {
           $project: {
             merged: {
               $concatArrays: [
                 "$cfCandidates",
                 "$cbCandidates",
-                "$recentRandomCandidates",
+                {
+                  $map: {
+                    input: "$recentRandomCandidates",
+                    as: "recent",
+                    in: {
+                      _id: "$$recent._id",
+                      recentScore: "$$recent.recentRandomScore",
+                    },
+                  },
+                },
                 {
                   $cond: [
-                    { $gt: [{ $size: { $concatArrays: ["$cfCandidates", "$cbCandidates"] } }, 0] },
+                    {
+                      $gt: [
+                        {
+                          $size: {
+                            $concatArrays: ["$cfCandidates", "$cbCandidates"],
+                          },
+                        },
+                        0,
+                      ],
+                    },
                     [],
-                    "$popularFallbackCandidates",
+                    {
+                      $map: {
+                        input: "$popularFallbackCandidates",
+                        as: "popular",
+                        in: {
+                          _id: "$$popular._id",
+                          popularScore: "$$popular.popularScore",
+                        },
+                      },
+                    },
                   ],
                 },
               ],
@@ -758,24 +1121,32 @@ export const getRecomendationController = async (req, res, next) => {
 
         { $unwind: "$merged" },
 
-        // Score (fix $ifNull usage)
         {
           $group: {
             _id: "$merged._id",
             totalScore: {
               $sum: {
-                $add: [
-                  { $ifNull: ["$merged.cfScore", 0] },
-                  { $ifNull: ["$merged.cbScore", 0] },
-                  { $ifNull: ["$merged.recentScore", 0] },
-                  { $ifNull: ["$merged.popularScore", 0] },
+                $ifNull: [
+                  "$merged.cfScore",
+                  {
+                    $ifNull: [
+                      "$merged.cbScore",
+                      {
+                        $ifNull: [
+                          "$merged.recentScore",
+                          {
+                            $ifNull: ["$merged.popularScore", 0.1],
+                          },
+                        ],
+                      },
+                    ],
+                  },
                 ],
               },
             },
           },
         },
 
-        // Attach product and finalize
         {
           $lookup: {
             from: "products",
@@ -784,41 +1155,39 @@ export const getRecomendationController = async (req, res, next) => {
             as: "product",
           },
         },
-        { $unwind: "$product" },
+        { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
         { $sort: { totalScore: -1 } },
         { $limit: 6 },
+
         {
-          $project: {
-            _id: 0,
-            productId: "$product._id",
-            name: "$product.slug",
-            category: "$product.categoryId",
-            totalScore: 1,
-            price: "$product.price",
-            description: "$product.description",
+          $replaceRoot: {
+            newRoot: {
+              $mergeObjects: ["$product"],
+            },
           },
+        },
+        {
+          $project: { __v: 0, updatedAt: 0, createdAt: 0 },
         },
       ];
 
       const result = await getRecomendationModel(pipeline);
-
-      // Avoid "Cannot read properties of undefined (reading 'length')"
-      const safe = Array.isArray(result) ? result : [];
-
-      console.log(safe.length);
-      console.log(JSON.stringify(safe, null, 2));
-
-      // send back to client (optional, but typical for a controller)
-      return res.status(200).json(safe);
+      return responseClient({
+        req,
+        res,
+        payload: result ? result : [],
+        message: "recomended product",
+      });
     } else {
       const recommendations = await getAllRecommendedProduct();
-      const safe = Array.isArray(recommendations) ? recommendations : [];
-      console.log(safe.length);
-      return res.status(200).json(safe);
+      return responseClient({
+        req,
+        res,
+        payload: recommendations ? recommendations : [],
+        message: "recomended product",
+      });
     }
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
-

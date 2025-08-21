@@ -6,7 +6,7 @@ import {
 
 const recomendationRouter = express.Router();
 recomendationRouter.post("/", createRecomendationController);
-recomendationRouter.get("/:userId", getRecomendationController);
+recomendationRouter.get("/", getRecomendationController);
 
 
 

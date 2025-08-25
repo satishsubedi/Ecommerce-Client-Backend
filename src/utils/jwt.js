@@ -3,15 +3,15 @@ import { updateUser } from "../models/User/UserModel.js";
 import jwt from "jsonwebtoken";
 
 // Generate accessJWT
-export const createAccessJWT = async (email) => {
+export const createAccessJWT = async (userId) => {
   // Create
-  const token = jwt.sign({ email }, process.env.ACCESSJWT_SECRET, {
+  const token = jwt.sign({ id: userId }, process.env.ACCESSJWT_SECRET, {
     expiresIn: "3h",
   });
   // Store in Session Table
   const obj = {
     token,
-    association: email,
+    association: userId,
     expire: new Date(Date.now() + 3 * 60 * 60 * 1000), // 3 Hr expiry.
   };
   const newSession = await createNewSession(obj);
@@ -27,13 +27,13 @@ export const verifyAccessJWT = (token) => {
 };
 
 // Generate Refresh JWT
-export const createRefreshJWT = async (email) => {
+export const createRefreshJWT = async (userId) => {
   // Create
-  const refreshJWT = jwt.sign({ email }, process.env.REFRESHJWT_SECRET, {
+  const refreshJWT = jwt.sign({ id: userId }, process.env.REFRESHJWT_SECRET, {
     expiresIn: "30d",
   });
   // Update in User Table
-  const user = await updateUser({ email }, { refreshJWT });
+  const user = await updateUser({ _id: userId }, { refreshJWT });
   return user?._id ? refreshJWT : null;
 };
 
@@ -45,11 +45,9 @@ export const verifyRefreshJWT = (token) => {
     return error.message;
   }
 };
-export const getJwts = async (email) => {
-  
-
+export const getJwts = async (userId) => {
   return {
-    accessJWT: await createAccessJWT(email),
-    refreshJWT: await createRefreshJWT(email),
+    accessJWT: await createAccessJWT(userId),
+    refreshJWT: await createRefreshJWT(userId),
   };
 };

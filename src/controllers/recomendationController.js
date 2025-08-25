@@ -1276,6 +1276,7 @@ export const getRecomendationController = async (req, res, next) => {
         req,
         res,
         payload: uniqueProducts.length > 0 ? uniqueProducts : [],
+        message: "",
       });
     } else {
       return responseClient({

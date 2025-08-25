@@ -14,4 +14,6 @@ productRouter.get("/", getAllProductsController);
 productRouter.get("/filterProduct", getAllFilterProductsController);
 productRouter.get("/bySlug/:slug", getSingleProductsController);
 
+
+
 export default productRouter;

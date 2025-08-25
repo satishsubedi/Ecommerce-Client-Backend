@@ -16,6 +16,7 @@ const productSchema = new mongoose.Schema(
     },
     sale: { type: Boolean, default: false },
     mainCategory: { type: String, required: true },
+    salesCount: { type: Number, default: 0 ,index:true},
 
     productPath: { type: String, required: true, index: true },
     stock: Number,

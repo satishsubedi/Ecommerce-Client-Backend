@@ -46,6 +46,14 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "user"],
       default: "user",
     },
+    productViewd: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+        default: [],
+        index: true,
+      },
+    ],
     refreshJWT: {
       type: String,
     },

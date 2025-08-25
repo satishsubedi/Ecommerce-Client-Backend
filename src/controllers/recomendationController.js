@@ -1270,7 +1270,9 @@ export const getRecomendationController = async (req, res, next) => {
       ];
       const uniqueProducts = [
         ...new Set(finalRecomededProducts.map((p) => JSON.stringify(p))),
-      ].map((str) => JSON.parse(str));
+      ]
+        .map((str) => JSON.parse(str))
+        .reverse();
 
       return responseClient({
         req,

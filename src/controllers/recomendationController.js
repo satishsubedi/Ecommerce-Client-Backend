@@ -6,16 +6,18 @@ import {
 } from "../models/recommendation/RecomendationModel.js";
 import { responseClient } from "../middleware/responseClient.js";
 import mongoose from "mongoose";
-import { getAllRecommendedProduct } from "../models/Product/ProductModel.js";
+import {
+  getAllRecommendedProduct,
+  getProductCategoryByProductId,
+  getRecomendedProductBasedOnCategory,
+  getRecomendedProductBasedOnMainCategory,
+} from "../models/Product/ProductModel.js";
 export const createRecomendationController = async (req, res, next) => {
   try {
-    const { userId, interactionId, productId, type } = req.body;
-
     // check if same interation is already in db
     const recomendation = await checkRecomendationModel(req.body);
 
     if (recomendation) {
-      console.log(recomendation);
       //  update recomendation
       await updatetRecomendationModel(req.body, {
         $set: { updatedAt: Date.now() },
@@ -854,337 +856,433 @@ const LAMBDA = 0.1; // Decay rate
 
 // Constants for interaction weights and time decay
 
+// export const getRecomendationController = async (req, res, next) => {
+//   console.log(req.query, "hello 857");
+//   try {
+//     let ObjectId;
+//     if (req?.query?.userId) {
+//       ObjectId = new mongoose.Types.ObjectId(req.query?.userId);
+//     }
+//     if (req.query?.userId && !mongoose.Types.ObjectId.isValid(ObjectId)) {
+//       return responseClient({
+//         req,
+//         res,
+//         message: "invalid usrerId",
+//         statusCode: 400,
+//       });
+//     }
+//     const matchuserId = {
+//       $match: { userId: ObjectId },
+//     };
+//     const matchinteractiondId = {
+//       $match: { interactionId: req.query.interactionId },
+//     };
+//     const match = req.query.userId ? matchuserId : matchinteractiondId;
+
+//     if (req.query?.userId || req.query?.interactionId) {
+//       const pipeline = [
+//         match,
+
+//         {
+//           $lookup: {
+//             from: "products",
+//             localField: "productId",
+//             foreignField: "_id",
+//             as: "product",
+//           },
+//         },
+//         { $unwind: "$product" },
+
+//         {
+//           $addFields: {
+//             daysAgo: {
+//               $divide: [
+//                 { $subtract: [new Date(), "$updatedAt"] },
+//                 1000 * 60 * 60 * 24,
+//               ],
+//             },
+//             weight: {
+//               $switch: {
+//                 branches: [
+//                   {
+//                     case: { $eq: ["$type", "view"] },
+//                     then: INTERACTION_WEIGHTS.view,
+//                   },
+//                   {
+//                     case: { $eq: ["$type", "cart"] },
+//                     then: INTERACTION_WEIGHTS.cart,
+//                   },
+//                   {
+//                     case: { $eq: ["$type", "purchase"] },
+//                     then: INTERACTION_WEIGHTS.purchase,
+//                   },
+//                   {
+//                     case: { $eq: ["$type", "rating"] },
+//                     then: INTERACTION_WEIGHTS.rating,
+//                   },
+//                 ],
+//                 default: 1,
+//               },
+//             },
+//           },
+//         },
+
+//         {
+//           $addFields: {
+//             timeDecayScore: {
+//               $multiply: [
+//                 "$weight",
+//                 { $exp: { $multiply: [-LAMBDA, "$daysAgo"] } },
+//               ],
+//             },
+//           },
+//         },
+
+//         {
+//           $group: {
+//             _id: "$product.categoryId",
+//             totalScore: { $sum: "$timeDecayScore" },
+//             productIds: { $addToSet: "$productId" },
+//           },
+//         },
+
+//         { $sort: { totalScore: -1 } },
+
+//         {
+//           $group: {
+//             _id: null,
+//             categories: { $push: { category: "$_id", score: "$totalScore" } },
+//             allProductIds: { $push: "$productIds" },
+//           },
+//         },
+
+//         {
+//           $project: {
+//             categories: 1,
+//             interactedProducts: {
+//               $reduce: {
+//                 input: "$allProductIds",
+//                 initialValue: [],
+//                 in: { $setUnion: ["$$value", "$$this"] },
+//               },
+//             },
+//           },
+//         },
+
+//         {
+//           $lookup: {
+//             from: "recommendations",
+//             let: { interacted: "$interactedProducts" },
+//             pipeline: [
+//               { $match: { $expr: { $in: ["$productId", "$$interacted"] } } },
+//               { $group: { _id: "$userId", common: { $sum: 1 } } },
+//               { $sort: { common: -1 } },
+//               { $limit: 10 },
+//             ],
+//             as: "similarUsers",
+//           },
+//         },
+
+//         {
+//           $set: {
+//             similarUserIds: {
+//               $map: { input: "$similarUsers", as: "u", in: "$$u._id" },
+//             },
+//           },
+//         },
+
+//         {
+//           $lookup: {
+//             from: "recommendations",
+//             let: {
+//               simUsers: "$similarUserIds",
+//               interacted: "$interactedProducts",
+//             },
+//             pipeline: [
+//               {
+//                 $match: {
+//                   $expr: {
+//                     $and: [
+//                       { $in: ["$userId", "$$simUsers"] },
+//                       { $not: [{ $in: ["$productId", "$$interacted"] }] },
+//                     ],
+//                   },
+//                 },
+//               },
+//               { $group: { _id: "$productId", cfScore: { $sum: 2 } } },
+//             ],
+//             as: "cfCandidates",
+//           },
+//         },
+
+//         {
+//           $lookup: {
+//             from: "products",
+//             let: {
+//               cats: "$categories.category",
+//               interacted: "$interactedProducts",
+//             },
+//             pipeline: [
+//               {
+//                 $match: {
+//                   $expr: {
+//                     $and: [
+//                       { $in: ["$categoryId", "$$cats"] },
+//                       { $not: [{ $in: ["$_id", "$$interacted"] }] },
+//                     ],
+//                   },
+//                 },
+//               },
+//               { $group: { _id: "$_id", cbScore: { $sum: 1.5 } } },
+//             ],
+//             as: "cbCandidates",
+//           },
+//         },
+
+//         {
+//           $lookup: {
+//             from: "products",
+//             let: { interacted: "$interactedProducts" },
+//             pipeline: [
+//               {
+//                 $match: {
+//                   $expr: { $not: [{ $in: ["$_id", "$$interacted"] }] },
+//                   createdAt: {
+//                     $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+//                   },
+//                 },
+//               },
+//               { $sample: { size: 50 } },
+//               {
+//                 $project: { _id: 1, recentRandomScore: { $literal: 0.5 } },
+//               },
+//             ],
+//             as: "recentRandomCandidates",
+//           },
+//         },
+
+//         {
+//           $lookup: {
+//             from: "products",
+//             let: { interacted: "$interactedProducts" },
+//             pipeline: [
+//               {
+//                 $match: {
+//                   $expr: { $not: [{ $in: ["$_id", "$$interacted"] }] },
+//                 },
+//               },
+//               { $sort: { createdAt: -1 } },
+//               { $limit: 50 },
+//               { $project: { _id: 1, popularScore: { $literal: 0.3 } } },
+//             ],
+//             as: "popularFallbackCandidates",
+//           },
+//         },
+
+//         {
+//           $project: {
+//             merged: {
+//               $concatArrays: [
+//                 "$cfCandidates",
+//                 "$cbCandidates",
+//                 {
+//                   $map: {
+//                     input: "$recentRandomCandidates",
+//                     as: "recent",
+//                     in: {
+//                       _id: "$$recent._id",
+//                       recentScore: "$$recent.recentRandomScore",
+//                     },
+//                   },
+//                 },
+//                 {
+//                   $cond: [
+//                     {
+//                       $gt: [
+//                         {
+//                           $size: {
+//                             $concatArrays: ["$cfCandidates", "$cbCandidates"],
+//                           },
+//                         },
+//                         0,
+//                       ],
+//                     },
+//                     [],
+//                     {
+//                       $map: {
+//                         input: "$popularFallbackCandidates",
+//                         as: "popular",
+//                         in: {
+//                           _id: "$$popular._id",
+//                           popularScore: "$$popular.popularScore",
+//                         },
+//                       },
+//                     },
+//                   ],
+//                 },
+//               ],
+//             },
+//           },
+//         },
+
+//         { $unwind: "$merged" },
+
+//         {
+//           $group: {
+//             _id: "$merged._id",
+//             totalScore: {
+//               $sum: {
+//                 $ifNull: [
+//                   "$merged.cfScore",
+//                   {
+//                     $ifNull: [
+//                       "$merged.cbScore",
+//                       {
+//                         $ifNull: [
+//                           "$merged.recentScore",
+//                           {
+//                             $ifNull: ["$merged.popularScore", 0.1],
+//                           },
+//                         ],
+//                       },
+//                     ],
+//                   },
+//                 ],
+//               },
+//             },
+//           },
+//         },
+
+//         {
+//           $lookup: {
+//             from: "products",
+//             localField: "_id",
+//             foreignField: "_id",
+//             as: "product",
+//           },
+//         },
+//         { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
+//         { $sort: { totalScore: -1 } },
+//         { $limit: 6 },
+
+//         {
+//           $replaceRoot: {
+//             newRoot: {
+//               $mergeObjects: ["$product"],
+//             },
+//           },
+//         },
+//         {
+//           $project: { __v: 0, updatedAt: 0, createdAt: 0 },
+//         },
+//       ];
+
+//       const result = await getRecomendationModel(pipeline);
+//       return responseClient({
+//         req,
+//         res,
+//         payload: result ? result : [],
+//         message: "recomended product",
+//       });
+//     } else {
+//       const recommendations = await getAllRecommendedProduct();
+
+//       return responseClient({
+//         req,
+//         res,
+//         payload: recommendations ? recommendations : [],
+//         message: "recomended product",
+//       });
+//     }
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
 export const getRecomendationController = async (req, res, next) => {
+  console.log(req.params, "params");
   try {
-    const { userId, interactionId } = req.body;
-    const ObjectId = new mongoose.Types.ObjectId(userId);
+    const { userId, interactionId } = req.query;
+    // step 1 get all the interaction based on userId and itneration ID
+    const match = userId ? userId : interactionId;
+    const interactions = await getRecomendationModel(
+      userId ? { userId: match } : { interactionId: match }
+    );
+    const interactionWithWeightatge =
+      interactions.length && Array.isArray(interactions)
+        ? interactions.map((interaction) => {
+            let weight;
+            if (interaction.type == "view") {
+              weight = 1;
+            } else if (interaction.type == "cart") {
+              weight = 2;
+            } else if (interaction.type == "purchase") {
+              weight = 3;
+            }
 
-    if (userId && !mongoose.Types.ObjectId.isValid(ObjectId)) {
-      return responseClient({
-        req,
-        res,
-        message: "invalid usrerId",
-        statusCode: 400,
-      });
-    }
-    const matchuserId = {
-      $match: { userId: ObjectId },
-    };
-    const matchinteractiondId = { $match: { interactionId: interactionId } };
-    const match = userId ? matchuserId : matchinteractiondId;
-    console.log(match);
-    if (userId || interactionId) {
-      const pipeline = [
-        match,
+            return { ...interaction, weight };
+          })
+        : [];
+    // sort the interaction beased on wieth
+    if (interactionWithWeightatge.length > 0) {
+      const sortedInteractions = interactionWithWeightatge.sort(
+        (a, b) => b.weight - a.weight
+      );
 
-        {
-          $lookup: {
-            from: "products",
-            localField: "productId",
-            foreignField: "_id",
-            as: "product",
-          },
-        },
-        { $unwind: "$product" },
+      const uniqueProductIds = [
+        ...new Set(
+          sortedInteractions.map(({ productId }) => productId.toString())
+        ),
+      ].map((idStr) => new mongoose.Types.ObjectId(idStr));
 
-        {
-          $addFields: {
-            daysAgo: {
-              $divide: [
-                { $subtract: [new Date(), "$updatedAt"] },
-                1000 * 60 * 60 * 24,
-              ],
-            },
-            weight: {
-              $switch: {
-                branches: [
-                  {
-                    case: { $eq: ["$type", "view"] },
-                    then: INTERACTION_WEIGHTS.view,
-                  },
-                  {
-                    case: { $eq: ["$type", "cart"] },
-                    then: INTERACTION_WEIGHTS.cart,
-                  },
-                  {
-                    case: { $eq: ["$type", "purchase"] },
-                    then: INTERACTION_WEIGHTS.purchase,
-                  },
-                  {
-                    case: { $eq: ["$type", "rating"] },
-                    then: INTERACTION_WEIGHTS.rating,
-                  },
-                ],
-                default: 1,
-              },
-            },
-          },
-        },
-
-        {
-          $addFields: {
-            timeDecayScore: {
-              $multiply: [
-                "$weight",
-                { $exp: { $multiply: [-LAMBDA, "$daysAgo"] } },
-              ],
-            },
-          },
-        },
-
-        {
-          $group: {
-            _id: "$product.categoryId",
-            totalScore: { $sum: "$timeDecayScore" },
-            productIds: { $addToSet: "$productId" },
-          },
-        },
-
-        { $sort: { totalScore: -1 } },
-
-        {
-          $group: {
-            _id: null,
-            categories: { $push: { category: "$_id", score: "$totalScore" } },
-            allProductIds: { $push: "$productIds" },
-          },
-        },
-
-        {
-          $project: {
-            categories: 1,
-            interactedProducts: {
-              $reduce: {
-                input: "$allProductIds",
-                initialValue: [],
-                in: { $setUnion: ["$$value", "$$this"] },
-              },
-            },
-          },
-        },
-
-        {
-          $lookup: {
-            from: "recommendations",
-            let: { interacted: "$interactedProducts" },
-            pipeline: [
-              { $match: { $expr: { $in: ["$productId", "$$interacted"] } } },
-              { $group: { _id: "$userId", common: { $sum: 1 } } },
-              { $sort: { common: -1 } },
-              { $limit: 10 },
-            ],
-            as: "similarUsers",
-          },
-        },
-
-        {
-          $set: {
-            similarUserIds: {
-              $map: { input: "$similarUsers", as: "u", in: "$$u._id" },
-            },
-          },
-        },
-
-        {
-          $lookup: {
-            from: "recommendations",
-            let: {
-              simUsers: "$similarUserIds",
-              interacted: "$interactedProducts",
-            },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $in: ["$userId", "$$simUsers"] },
-                      { $not: [{ $in: ["$productId", "$$interacted"] }] },
-                    ],
-                  },
-                },
-              },
-              { $group: { _id: "$productId", cfScore: { $sum: 2 } } },
-            ],
-            as: "cfCandidates",
-          },
-        },
-
-        {
-          $lookup: {
-            from: "products",
-            let: {
-              cats: "$categories.category",
-              interacted: "$interactedProducts",
-            },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $in: ["$categoryId", "$$cats"] },
-                      { $not: [{ $in: ["$_id", "$$interacted"] }] },
-                    ],
-                  },
-                },
-              },
-              { $group: { _id: "$_id", cbScore: { $sum: 1.5 } } },
-            ],
-            as: "cbCandidates",
-          },
-        },
-
-        {
-          $lookup: {
-            from: "products",
-            let: { interacted: "$interactedProducts" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { $not: [{ $in: ["$_id", "$$interacted"] }] },
-                  createdAt: {
-                    $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                  },
-                },
-              },
-              { $sample: { size: 50 } },
-              {
-                $project: { _id: 1, recentRandomScore: { $literal: 0.5 } },
-              },
-            ],
-            as: "recentRandomCandidates",
-          },
-        },
-
-        {
-          $lookup: {
-            from: "products",
-            let: { interacted: "$interactedProducts" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { $not: [{ $in: ["$_id", "$$interacted"] }] },
-                },
-              },
-              { $sort: { createdAt: -1 } },
-              { $limit: 50 },
-              { $project: { _id: 1, popularScore: { $literal: 0.3 } } },
-            ],
-            as: "popularFallbackCandidates",
-          },
-        },
-
-        {
-          $project: {
-            merged: {
-              $concatArrays: [
-                "$cfCandidates",
-                "$cbCandidates",
-                {
-                  $map: {
-                    input: "$recentRandomCandidates",
-                    as: "recent",
-                    in: {
-                      _id: "$$recent._id",
-                      recentScore: "$$recent.recentRandomScore",
-                    },
-                  },
-                },
-                {
-                  $cond: [
-                    {
-                      $gt: [
-                        {
-                          $size: {
-                            $concatArrays: ["$cfCandidates", "$cbCandidates"],
-                          },
-                        },
-                        0,
-                      ],
-                    },
-                    [],
-                    {
-                      $map: {
-                        input: "$popularFallbackCandidates",
-                        as: "popular",
-                        in: {
-                          _id: "$$popular._id",
-                          popularScore: "$$popular.popularScore",
-                        },
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
-          },
-        },
-
-        { $unwind: "$merged" },
-
-        {
-          $group: {
-            _id: "$merged._id",
-            totalScore: {
-              $sum: {
-                $ifNull: [
-                  "$merged.cfScore",
-                  {
-                    $ifNull: [
-                      "$merged.cbScore",
-                      {
-                        $ifNull: [
-                          "$merged.recentScore",
-                          {
-                            $ifNull: ["$merged.popularScore", 0.1],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              },
-            },
-          },
-        },
-
-        {
-          $lookup: {
-            from: "products",
-            localField: "_id",
-            foreignField: "_id",
-            as: "product",
-          },
-        },
-        { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
-        { $sort: { totalScore: -1 } },
-        { $limit: 6 },
-
-        {
-          $replaceRoot: {
-            newRoot: {
-              $mergeObjects: ["$product"],
-            },
-          },
-        },
-        {
-          $project: { __v: 0, updatedAt: 0, createdAt: 0 },
-        },
+      console.log(uniqueProductIds.length, "productId lenght");
+      const productCategory = await getProductCategoryByProductId(
+        uniqueProductIds
+      );
+      const uniqueProductCategory = [
+        ...new Set(
+          productCategory.map((category) => category.categoryId.toString())
+        ),
+      ].map((idstr) => new mongoose.Types.ObjectId(idstr));
+      console.log(uniqueProductCategory);
+      const uniqueProductIdMainCategory = [
+        ...new Set(productCategory.map((cat) => cat.mainCategory)),
       ];
+      // now first find the product based on category id then based on main category excluded productIDS
+      // based on catId
+      const recomendedProductByCategory =
+        await getRecomendedProductBasedOnCategory(
+          uniqueProductCategory,
+          uniqueProductIds
+        );
+      // console.log(uniqueProductIds, "productId lenght");
+      // console.log(uniqueProductIdMainCategory, "main");
+      // console.log(uniqueProductCategory, "cat");
+      // based on main cat
+      const recomendedProductByManiCategory =
+        await getRecomendedProductBasedOnMainCategory(
+          uniqueProductIdMainCategory,
+          uniqueProductIds
+        );
+      const finalRecomededProducts = [
+        ...recomendedProductByCategory,
+        ...recomendedProductByManiCategory,
+      ];
+      const uniqueProducts = [
+        ...new Set(finalRecomededProducts.map((p) => JSON.stringify(p))),
+      ].map((str) => JSON.parse(str));
 
-      const result = await getRecomendationModel(pipeline);
       return responseClient({
         req,
         res,
-        payload: result ? result : [],
-        message: "recomended product",
+        payload: uniqueProducts.length > 0 ? uniqueProducts : [],
       });
     } else {
-      const recommendations = await getAllRecommendedProduct();
       return responseClient({
         req,
         res,
-        payload: recommendations ? recommendations : [],
-        message: "recomended product",
+        payload: [],
+        message: "no product interacted yet",
       });
     }
   } catch (error) {

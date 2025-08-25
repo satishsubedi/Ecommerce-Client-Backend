@@ -24,3 +24,28 @@ export const getAllRecommendedProduct = async () => {
     .limit(5)
     .exec();
 };
+
+export const getProductCategoryByProductId = async (productId) => {
+  return productCollection
+    .find({ _id: { $in: productId } })
+    .select("categoryId mainCategory -_id");
+};
+
+export const getRecomendedProductBasedOnCategory = async (
+  categoryIds,
+  excludedProductIds
+) => {
+  return productCollection.find({
+    categoryId: { $in: categoryIds }, // match categoryId
+    _id: { $nin: excludedProductIds }, // exclude these product IDs
+  });
+};
+export const getRecomendedProductBasedOnMainCategory = async (
+  mainCategories,
+  excludedProductIds
+) => {
+  return productCollection.find({
+    mainCategory: { $in: mainCategories }, // match categoryId
+    _id: { $nin: excludedProductIds }, // exclude these product IDs
+  });
+};

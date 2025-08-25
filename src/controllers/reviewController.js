@@ -54,9 +54,9 @@ export const getProductReviewController = async (req, res, next) => {
   try {
     const productReviewList = await getReviewByProductId({
       productId: req.params.productId,
-      status: "active",
+      status: "approved",
     });
-  
+
     return Array.isArray(productReviewList) && productReviewList.length
       ? responseClient({
           req,

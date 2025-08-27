@@ -1,6 +1,8 @@
 import {
   createNewUser,
+  findByIdAndDelete,
   getUserByEmail,
+  getUserById,
   updateUser,
 } from "../models/User/UserModel.js";
 import { comparePassword, hashpassword } from "../utils/bcrypt.js";
@@ -8,6 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 import { responseClient } from "../middleware/responseClient.js";
 import {
   createNewSession,
+  deleteManySessions,
   deleteSession,
 } from "../models/Session/SessionModel.js";
 import {
@@ -15,6 +18,7 @@ import {
   userActivationUrlEmail,
   userResetPasswordEmail,
 } from "../services/email/emailService.js";
+import validator from "validator";
 import { getJwts } from "../utils/jwt.js";
 import { userResetPasswordLinkEmailTemplate } from "../services/email/emailTemplate.js";
 import UserSchema from "../models/User/UserSchema.js";
@@ -134,7 +138,7 @@ export const loginUser = async (req, res, next) => {
         console.log("User authenticated succesfully...!");
 
         // Create JWTs, so that server can validate through these tokens, instead of asking for username and password
-        const jwts = await getJwts(email);
+        const jwts = await getJwts(user._id);
 
         // Response jwts
         return responseClient({
@@ -150,7 +154,7 @@ export const loginUser = async (req, res, next) => {
     const isMatch = comparePassword(password, user.password);
 
     if (isMatch) {
-      const jwt = await getJwts(user.email);
+      const jwt = await getJwts(user._id);
       return responseClient({
         req,
         res,
@@ -273,6 +277,39 @@ export const resetPassword = async (req, res, next) => {
   }
 };
 
+//Update user
+export const updateUserController = async (req, res, next) => {
+  try {
+    const user = req.userInfo; // Loaded from middleware
+    // Only split if fullName exists
+    if (req.body.fullName) {
+      const [fName, lName] = req.body.fullName.split(" ");
+      user.fName = fName || user.fName;
+      user.lName = lName || user.lName;
+    }
+
+    if (req.body.email) user.email = req.body.email;
+    if (req.body.phone) user.phone = req.body.phone;
+    if (req.body.profilePicture) user.profilePicture = req.body.profilePicture;
+
+    await user.save();
+    responseClient({
+      req,
+      res,
+      status: "success",
+      payload: user,
+      message: "User updated successfully!!",
+    });
+  } catch (error) {
+    responseClient({
+      req,
+      res,
+      statusCode: 500,
+      message: error.message || "Unable to update user!!",
+    });
+  }
+};
+
 // Logout user
 export const logoutUser = async (req, res, next) => {
   try {
@@ -379,6 +416,207 @@ export const getWishlistProducts = async (req, res) => {
       res,
       statusCode: 500,
       message: error.message || "Server error",
+    });
+  }
+};
+
+export const changePasswordController = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    // const hashedCurrentPassword = hashpassword(currentPassword);
+    const user = await getUserById(req.userInfo._id);
+    if (!user) {
+      return responseClient({
+        req,
+        res,
+        message: " User not found",
+        statusCode: 404,
+      });
+    }
+    const isMatch = comparePassword(currentPassword, user.password);
+    if (!isMatch) {
+      return responseClient({
+        req,
+        res,
+        message: "Current password you entered is incorrect",
+        statusCode: 400,
+      });
+    }
+    const hashedPass = hashpassword(newPassword);
+    await updateUser({ _id: user._id }, { password: hashedPass });
+    return responseClient({
+      req,
+      res,
+      message: "Password updated successfully",
+      statusCode: 200,
+    });
+  } catch (error) {
+    return responseClient({
+      req,
+      res,
+      message: error.message,
+      statusCode: 500,
+    });
+  }
+};
+
+export const deleteUserController = async (req, res) => {
+  try {
+    const userId = req.userInfo?._id;
+    if (!userId) {
+      return responseClient({
+        req,
+        res,
+        message: "Unauthorized",
+        statusCode: 401,
+      });
+    }
+    const deleted = await findByIdAndDelete(userId);
+    if (!deleted) {
+      return responseClient({
+        req,
+        res,
+        message: "User not found",
+        statusCode: 404,
+      });
+    }
+    await deleteManySessions({ association: userId });
+    return responseClient({
+      req,
+      res,
+      message: "Account Deleted successfully",
+      statusCode: 200,
+      payload: null,
+    });
+  } catch (error) {
+    return responseClient({
+      req,
+      res,
+      message: error.message || "Failed to delete account",
+      statusCode: 500,
+    });
+  }
+};
+
+// controllers/userController.js
+export const addAddressController = async (req, res) => {
+  try {
+    const userId = req.userInfo._id;
+    const { street, city, state, country, postalCode } = req.body;
+
+    const user = await getUserById(userId);
+    if (!user)
+      return responseClient({
+        req,
+        res,
+        message: error.message || "User not found",
+        statusCode: 404,
+      });
+
+    user.address.push({ street, city, state, country, postalCode });
+    await user.save(); // Save the updated user document
+
+    return responseClient({
+      req,
+      res,
+      message: "Address added successfully!",
+      payload: user.address, // Return the updated address list
+    });
+  } catch (err) {
+    return responseClient({
+      req,
+      res,
+      message: "Failed to add address!",
+      statusCode: 500,
+    });
+  }
+};
+
+export const editAddressController = async (req, res) => {
+  try {
+    const userId = req.userInfo._id;
+    const { addressId, street, city, state, country, postalCode } = req.body;
+
+    const user = await getUserById(userId);
+    if (!user)
+      return responseClient({
+        req,
+        res,
+        message: error.message || "User not found",
+        statusCode: 404,
+      });
+
+    const address = user.address.id(addressId); // Find the address by ID
+    if (!address)
+      return responseClient({
+        req,
+        res,
+        message: error.message || "Address not found",
+        statusCode: 404,
+      });
+
+    address.street = street;
+    address.city = city;
+    address.state = state;
+    address.country = country;
+    address.postalCode = postalCode;
+
+    await user.save();
+
+    return responseClient({
+      req,
+      res,
+      message: "Address updated successfully!",
+      payload: user.address, // Return the updated address list
+    });
+  } catch (err) {
+    return responseClient({
+      req,
+      res,
+      message: err.message || "Failed to edit address!",
+      statusCode: 500,
+    });
+  }
+};
+
+export const deleteAddressController = async (req, res) => {
+  try {
+    const userId = req.userInfo._id;
+    const { addressId } = req.params;
+
+    const user = await getUserById(userId);
+    if (!user)
+      return responseClient({
+        req,
+        res,
+        message: error.message || "User not found",
+        statusCode: 404,
+      });
+
+    const address = user.address.id(addressId); // Find the address by ID
+    if (!address)
+      return responseClient({
+        req,
+        res,
+        message: error.message || "Address not found",
+        statusCode: 404,
+      });
+
+    address.deleteOne(); // Delete the address from the array. Here address is a Mongoose document, so we can use deleteOne
+    await user.save(); // Save the updated user document
+
+    return responseClient({
+      req,
+      res,
+      message: "Address deleted successfully!",
+      payload: user.address, // Return the updated address list
+    });
+  } catch (error) {
+    return responseClient({
+      req,
+      res,
+      message: error.message || "Failed to delete address!",
+      statusCode: 500,
     });
   }
 };

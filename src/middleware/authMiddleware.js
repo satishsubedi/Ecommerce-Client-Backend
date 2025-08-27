@@ -19,11 +19,11 @@ export const userAuthMiddleware = async (req, res, next) => {
 
       const decoded = await verifyAccessJWT(token);
 
-      if (decoded.email) {
+      if (decoded.id) {
         const tokenSession = await getSession({ token });
 
         if (tokenSession?._id) {
-          const user = await getUserByEmail(decoded.email);
+          const user = await getOneUser({ _id: decoded.id }); // Look up by id
 
           if (user?._id && user.status === "active") {
             req.userInfo = user;
@@ -51,13 +51,14 @@ export const renewAccessJWTMiddleware = async (req, res) => {
       : authorization;
 
     const decoded = await verifyRefreshJWT(token);
-    if (decoded.email) {
+    if (decoded.id) {
+      //Use id instead of email
       const user = await getOneUser({
-        email: decoded.email,
+        _id: decoded.id,
         refreshJWT: token,
       });
       if (user?._id) {
-        const newToken = await createAccessJWT(decoded.email);
+        const newToken = await createAccessJWT(decoded.id);
         return responseClient({
           req,
           res,

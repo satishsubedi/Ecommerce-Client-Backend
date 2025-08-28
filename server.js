@@ -44,7 +44,6 @@ app.use(morgan("dev"));
 
 app.use(express.json());
 
-import reviewRouter from "./src/routes/reviewRoute.js";
 import imageRouter from "./src/routes/imageRoute.js";
 
 //API endpoints

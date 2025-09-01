@@ -32,7 +32,8 @@ app.use((req, res, next) => {
 //Middlewares
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin:
+      "http://localhost:5173||http://ecommerce-client-fe.s3-website.eu-north-1.amazonaws.com/",
     credentials: true,
   })
 );

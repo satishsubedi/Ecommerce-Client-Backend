@@ -72,7 +72,7 @@ export const insertNewUser = async (req, res, next) => {
 //activate user
 export const activateUser = async (req, res, next) => {
   try {
-    const { sessionId, token: t } = req.body;
+    const { sessionId, t } = req.body;
     console.log("req.body", req.body);
 
     if (sessionId && t) {
@@ -130,26 +130,6 @@ export const loginUser = async (req, res, next) => {
       });
     }
 
-    if (user?._id) {
-      //Compare the password
-      const isPassMatch = comparePassword(password, user.password);
-
-      if (isPassMatch) {
-        console.log("User authenticated succesfully...!");
-
-        // Create JWTs, so that server can validate through these tokens, instead of asking for username and password
-        const jwts = await getJwts(user._id);
-
-        // Response jwts
-        return responseClient({
-          req,
-          res,
-          message: "Login successful...!",
-          payload: jwts,
-        });
-      }
-    }
-
     //check if password is correct
     const isMatch = comparePassword(password, user.password);
 
@@ -161,14 +141,14 @@ export const loginUser = async (req, res, next) => {
         message: "User logged in successfully!!",
         payload: jwt,
       });
+    } else {
+      return responseClient({
+        req,
+        res,
+        message: "Invalid credentials",
+        statusCode: 401,
+      });
     }
-
-    return responseClient({
-      req,
-      res,
-      message: "Invalid credentials",
-      statusCode: 401,
-    });
   } catch (error) {
     console.log("Login error:", error);
     // Forward error to Express error-handling middleware
@@ -178,7 +158,6 @@ export const loginUser = async (req, res, next) => {
 
 //Get the user info
 export const getUser = async (req, res) => {
-  console.log(req, "134");
   try {
     responseClient({
       req,

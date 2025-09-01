@@ -1,5 +1,4 @@
 import {
-  ADDRESS_REQUIRED,
   EMAIL_REQUIRED,
   FNAME_REQUIRED,
   LNAME_REQUIRED,
@@ -17,7 +16,6 @@ export const newUserDataValidation = (req, res, next) => {
     email: EMAIL_REQUIRED,
     password: PASSWORD_REQUIRED,
     phone: PHONE_REQUIRED,
-    // address: ADDRESS_REQUIRED,
   };
   validateData({ req, res, next, obj });
 };

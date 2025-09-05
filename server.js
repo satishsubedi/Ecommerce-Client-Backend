@@ -35,6 +35,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://ecommerce-client-fe.s3-website.eu-north-1.amazonaws.com",
+      "http://ecommerce-client-front-bucket.s3-website.eu-north-1.amazonaws.com",
     ],
     credentials: true,
   })
